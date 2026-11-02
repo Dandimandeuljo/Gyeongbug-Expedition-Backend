@@ -8,7 +8,6 @@ API 명세, 게임 규칙 같은 기획 문서는 이 저장소에 없고 팀이
 |---|---|
 | 서버 | Node.js, TypeScript, NestJS 11 |
 | 데이터베이스 | PostgreSQL 15, TypeORM 0.3 |
-| 인증 | JWT |
 | 테스트 | Jest, Testcontainers |
 
 ## 1. 준비물
