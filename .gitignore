@@ -7,3 +7,15 @@ coverage/
 *.log
 *.tsbuildinfo
 static/
+
+# 원격 초기 커밋(9c100ba)에 있던 규칙
+/build
+/tmp
+logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.temp
+.tmp
