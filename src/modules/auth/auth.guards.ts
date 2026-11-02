@@ -16,6 +16,7 @@ import type {
 import { IS_CREATE_USER_THROTTLE, IS_PUBLIC } from '../../common/decorators';
 import { ErrorCode } from '../../common/errors/error-code.enum';
 import { GameError } from '../../common/errors/game-error';
+import { extractBearerToken } from './bearer-token';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -80,8 +81,7 @@ export class AppThrottlerGuard extends ThrottlerGuard {
   protected override getTracker(
     request: Record<string, unknown>,
   ): Promise<string> {
-    const headers = request.headers as Record<string, string | undefined>;
-    const token = headers.authorization?.replace(/^Bearer /, '');
+    const token = extractBearerToken(request);
     if (token) {
       try {
         const payload = this.jwt.verify<{ sub: number }>(token);

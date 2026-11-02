@@ -95,11 +95,34 @@ export class IdempotencyInterceptor implements NestInterceptor {
                   error.getStatus(),
                   error.getResponse(),
                 ),
-              ).pipe(switchMap(() => throwError(() => error)));
+              ).pipe(
+                switchMap((saved) =>
+                  saved
+                    ? throwError(() => error)
+                    : this.replayAfterConflict(operation, error, response),
+                ),
+              );
             }
             return throwError(() => error);
           }),
         );
+      }),
+    );
+  }
+
+  /** 동시에 들어온 같은 키가 먼저 저장된 경우입니다. 다른 요청이면 409, 같은 요청이면 재생합니다. */
+  private replayAfterConflict(
+    operation: OperationContext,
+    error: GameError,
+    response: Response,
+  ): Observable<unknown> {
+    return from(this.operations.findLive(operation.key)).pipe(
+      switchMap((existing) => {
+        if (!existing) {
+          return throwError(() => error);
+        }
+        this.assertSameRequest(existing, operation);
+        return this.replay(existing, response);
       }),
     );
   }

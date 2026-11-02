@@ -153,6 +153,36 @@ describe('코드 리뷰 결함', () => {
     });
   });
 
+  it('동시 초기화 재시도는 둘 다 같은 성공 응답을 받는다', async () => {
+    for (let round = 0; round < 5; round += 1) {
+      const { jwt } = await newUser();
+      const key = randomUUID();
+      const body = { confirmation: 'RESET' };
+      const results = await Promise.all([
+        post('/progress/reset', jwt, key).send(body),
+        post('/progress/reset', jwt, key).send(body),
+      ]);
+      expect(results.map((r) => r.status)).toEqual([200, 200]);
+      expect(results[0].body).toEqual(results[1].body);
+    }
+  });
+
+  it('다른 유저의 같은 키 동시 실패 요청도 한쪽은 409 이다', async () => {
+    for (let round = 0; round < 5; round += 1) {
+      const a = await newUser();
+      const b = await newUser();
+      const key = randomUUID();
+      const body = { target_region_id: 'x' };
+      const results = await Promise.all([
+        post('/regions/move', a.jwt, key).send(body),
+        post('/regions/move', b.jwt, key).send(body),
+      ]);
+      expect(results.map((r) => r.status).sort()).toEqual([400, 409]);
+      const conflict = results.find((r) => r.status === 409);
+      expect(conflict?.body.code).toBe('IDEMPOTENCY_KEY_REUSED');
+    }
+  });
+
   it('9번: int 범위를 벗어난 음수 상품 ID 는 404 이다', async () => {
     const { jwt } = await newUser();
     const res = await get('/products/-2147483649', jwt).expect(404);

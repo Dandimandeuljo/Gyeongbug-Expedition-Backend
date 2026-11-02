@@ -1,10 +1,11 @@
 import type { Request } from 'express';
 import { OperationService } from '../operation/operation.service';
+import { extractBearerToken } from './bearer-token';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Strategy } from 'passport-jwt';
 import { DataSource } from 'typeorm';
 import type { AuthUser } from '../../common/decorators';
 import { User } from '../../database/entities';
@@ -19,7 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly operations: OperationService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: extractBearerToken,
       ignoreExpiration: false,
       algorithms: ['HS256'],
       secretOrKey: config.getOrThrow<string>('JWT_SECRET'),

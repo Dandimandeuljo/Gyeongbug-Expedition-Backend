@@ -42,12 +42,13 @@ export class OperationService {
         where: { id: context.userId },
         lock: { mode: 'pessimistic_write' },
       });
-      if (!user) {
-        throw new GameError(ErrorCode.UNAUTHORIZED);
-      }
       const existing = await this.loadLive(manager, context.key);
       if (existing) {
         throw new OperationReplay(existing);
+      }
+      if (!user) {
+        // 영수증을 먼저 봅니다. 동시 초기화 재시도는 잠금을 기다리는 동안 유저가 사라집니다.
+        throw new GameError(ErrorCode.UNAUTHORIZED);
       }
       const body = await work(manager);
       const saved = await this.insert(manager, context, 200, body);
@@ -63,13 +64,16 @@ export class OperationService {
     });
   }
 
-  /** 4xx 응답을 저장합니다. 본 트랜잭션이 롤백된 뒤 별도로 실행됩니다. */
-  async saveError(
+  /**
+   * 4xx 응답을 저장합니다. 본 트랜잭션이 롤백된 뒤 별도로 실행됩니다.
+   * 같은 키가 이미 있으면 false 를 돌려줍니다.
+   */
+  saveError(
     context: OperationContext,
     status: number,
     body: unknown,
-  ): Promise<void> {
-    await this.insert(this.dataSource.manager, context, status, body);
+  ): Promise<boolean> {
+    return this.insert(this.dataSource.manager, context, status, body);
   }
 
   /** 보관 기간이 지나지 않은 영수증을 찾습니다. */

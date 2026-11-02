@@ -47,6 +47,12 @@ describe('속도 제한', () => {
     const limited = await me().expect(429);
     expect(limited.body.code).toBe('RATE_LIMITED');
 
+    // 인증 헤더의 대소문자를 바꿔도 같은 유저로 셉니다.
+    await http()
+      .get('/api/v1/user')
+      .set('Authorization', `bearer ${first.body.jwt}`)
+      .expect(429);
+
     // 7번: 유저당 제한은 엔드포인트마다 따로 세지 않습니다.
     await http()
       .get('/api/v1/regions')
