@@ -183,6 +183,24 @@ describe('코드 리뷰 결함', () => {
     }
   });
 
+  it('잠긴 지역 이동은 추첨하지 않아 반복으로 조각을 다시 뽑을 수 없다', async () => {
+    const { jwt, id } = await newUser();
+    await t.ds.query(`UPDATE logbook SET cur_collect = 19 WHERE user_id = $1`, [
+      id,
+    ]);
+    await elapse(id, 300);
+    t.rng.length = 0;
+    t.rng.push(0);
+    const res = await post('/regions/move', jwt)
+      .send({ target_region_id: 2 })
+      .expect(409);
+    expect(res.body.details.current_pieces).toBe(19);
+    expect(t.rng).toHaveLength(1);
+    t.rng.length = 0;
+    const me = await get('/user', jwt);
+    expect(me.body.state_version).toBe(0);
+  });
+
   it('9번: int 범위를 벗어난 음수 상품 ID 는 404 이다', async () => {
     const { jwt } = await newUser();
     const res = await get('/products/-2147483649', jwt).expect(404);

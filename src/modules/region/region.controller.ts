@@ -107,8 +107,8 @@ export class RegionController {
         throw new GameError(ErrorCode.ALREADY_IN_REGION);
       }
 
-      // 이전 지역 기준으로 정산한 뒤 해금을 검사합니다. 이번 정산으로 20개를 채우면 이동할 수 있습니다.
-      const settled = await this.settlement.settle(manager, auth.id);
+      // 잠긴 지역은 추첨 전에 거절합니다. 정산 뒤에 거절하면 롤백되므로
+      // 새 키로 반복해 20개가 나올 때까지 다시 뽑을 수 있고, 버려질 결과도 드러납니다.
       const unlocked = await manager.existsBy(UserRegionUnlock, {
         userId: auth.id,
         regionId: target.id,
@@ -116,6 +116,8 @@ export class RegionController {
       if (!unlocked) {
         throw await this.lockedError(manager, target, auth.id);
       }
+
+      const settled = await this.settlement.settle(manager, auth.id);
 
       const product = await manager.findOneByOrFail(RegionProduct, {
         regionId: target.id,
