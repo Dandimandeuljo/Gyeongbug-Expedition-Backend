@@ -8,7 +8,6 @@ API 명세, 게임 규칙 같은 기획 문서는 이 저장소에 없고 팀이
 |---|---|
 | 서버 | Node.js, TypeScript, NestJS 11 |
 | 데이터베이스 | PostgreSQL 15, TypeORM 0.3 |
-| 인증 | JWT |
 | 테스트 | Jest, Testcontainers |
 
 ## 1. 준비물
@@ -34,7 +33,7 @@ npm ci
 
 **2) 환경 변수 파일 만들기**
 
-다음 명령이 `.env` 파일을 만들고 DB 비밀번호와 JWT 키를 무작위로 채웁니다. 값을 고칠 필요는 없습니다. 이 값은 내 컴퓨터에만 저장되고 저장소에는 올라가지 않습니다.
+다음 명령이 `.env` 파일을 만들고 DB 비밀번호와 서명 키를 무작위로 채웁니다. 값을 고칠 필요는 없습니다. 이 값은 내 컴퓨터에만 저장되고 저장소에는 올라가지 않습니다.
 
 ```bash
 npm run setup:env
@@ -177,7 +176,7 @@ src/
 └── modules/                기능별 코드
     ├── settlement/         보상 계산 (게임 수치와 공식은 여기에만 있습니다)
     ├── operation/          중복 요청 방지 (Idempotency-Key)
-    ├── auth/               캐릭터 생성, JWT, 속도 제한
+    ├── auth/               캐릭터 생성, 인증, 속도 제한
     ├── user/               유저 조회
     ├── idle-reward/        방치 보상
     ├── equipment/          장비 강화
@@ -200,7 +199,7 @@ static/                     이미지 파일 (/static 주소로 제공)
 
 ## 9. 배포
 
-`Dockerfile` 로 운영 이미지를 만듭니다. 운영 값은 호스팅의 환경 변수나 비밀 저장소에 넣고 저장소에는 올리지 않습니다. `JWT_SECRET`, DB 접속 정보, `CORS_ORIGIN`, `PUBLIC_BASE_URL` 을 운영용으로 넣고 `NODE_ENV=production`, `SWAGGER_ENABLED=false` 로 둡니다.
+`Dockerfile` 로 운영 이미지를 만듭니다. 운영 값은 호스팅의 환경 변수나 비밀 저장소에 넣고 저장소에는 올리지 않습니다. 서명 키, DB 접속 정보, `CORS_ORIGIN`, `PUBLIC_BASE_URL` 을 운영용으로 넣고 `NODE_ENV=production`, `SWAGGER_ENABLED=false` 로 둡니다.
 
 ```bash
 docker build -t gyeongbug-server .
