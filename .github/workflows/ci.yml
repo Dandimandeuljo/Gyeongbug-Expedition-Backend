@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # npm run lint 는 --fix 를 쓰므로 CI 에서는 수정 없이 검사합니다.
+      - run: npx eslint "{src,test}/**/*.ts"
+      - run: npm run test
+      # GitHub 러너의 Docker 로 PostgreSQL 컨테이너를 띄웁니다.
+      - run: npm run test:integration
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
