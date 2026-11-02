@@ -22,7 +22,9 @@
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
     "seed": "ts-node src/database/seeds/seed.cli.ts",
-    "test:integration": "jest --config test/jest-integration.json --runInBand"
+    "test:integration": "jest --config test/jest-integration.json --runInBand",
+    "migration:run:prod": "node node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js",
+    "seed:prod": "node dist/database/seeds/seed.cli.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

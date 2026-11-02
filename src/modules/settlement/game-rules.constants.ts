@@ -13,8 +13,23 @@ export const QUIZ_QUESTIONS_PER_SET = 3; // GAME_RULES 7절, API 0-0절
 export const IDEMPOTENCY_TTL_HOURS = 24; // API 0-0절, DATABASE 7-1절
 export const NAME_MIN_LENGTH = 2; // API 0-0절, DATABASE 7-1절
 export const NAME_MAX_LENGTH = 10; // API 0-0절, DATABASE 7-1절
-// 기획이 목록을 주기 전까지 비어 있습니다 (API 0-0, TBD).
-export const BANNED_WORDS: readonly string[] = [];
+// 부분 일치로 검사하며 소문자로 적습니다. 운영 사칭과 대표적인 욕설을 막는 초기 목록입니다 (API 0-0).
+export const BANNED_WORDS: readonly string[] = [
+  '관리자',
+  '운영자',
+  '운영진',
+  '개발자',
+  'admin',
+  'operator',
+  '시발',
+  '씨발',
+  '병신',
+  '지랄',
+  '개새끼',
+  '좆',
+  'fuck',
+  'shit',
+];
 export const REMAINDER_DIVISOR = 6000; // GAME_RULES 2·6절
 
 // 공식에 포함된 계수도 같은 파일에서 관리한다.
