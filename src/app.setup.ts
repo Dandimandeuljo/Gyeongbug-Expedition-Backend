@@ -24,6 +24,8 @@ function validationError(errors: ValidationError[]): GameError {
 export function configureApp(app: NestExpressApplication): void {
   const config = app.get(ConfigService);
   app.useLogger(app.get(Logger));
+  // 프록시 뒤에서는 실제 접속 IP 로 POST /user 를 제한하도록 신뢰할 단계 수를 지정합니다.
+  app.set('trust proxy', config.get<number>('TRUST_PROXY_HOPS') ?? 0);
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.setGlobalPrefix('api/v1', {
     exclude: [{ path: 'health', method: RequestMethod.GET }],

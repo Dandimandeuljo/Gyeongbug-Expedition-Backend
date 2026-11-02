@@ -13,6 +13,7 @@ import {
 import { DataSource, EntityManager, In, QueryFailedError } from 'typeorm';
 import { CurrentUser, Idempotent, OperationCtx } from '../../common/decorators';
 import type { AuthUser, OperationContext } from '../../common/decorators';
+import { ApiEndpoint, DOCS } from '../../common/api-docs';
 import { ErrorCode } from '../../common/errors/error-code.enum';
 import { GameError } from '../../common/errors/game-error';
 import { kstToday } from '../../common/time/db-clock';
@@ -76,6 +77,7 @@ export class QuizController {
     private readonly operations: OperationService,
   ) {}
 
+  @ApiEndpoint(DOCS.issueQuiz)
   @Post('today')
   @HttpCode(200)
   async issue(@CurrentUser() user: AuthUser) {
@@ -123,6 +125,7 @@ export class QuizController {
     return { created, set: await this.setView(manager, rows) };
   }
 
+  @ApiEndpoint(DOCS.getQuiz)
   @Get('today')
   async today(@CurrentUser() user: AuthUser) {
     const manager = this.dataSource.manager;
@@ -133,6 +136,7 @@ export class QuizController {
     return this.setView(manager, rows);
   }
 
+  @ApiEndpoint(DOCS.submitQuiz)
   @Post('submit')
   @HttpCode(200)
   @Idempotent()

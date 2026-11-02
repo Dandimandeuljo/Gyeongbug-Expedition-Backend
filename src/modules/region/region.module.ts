@@ -4,6 +4,7 @@ import { IsInt, Min } from 'class-validator';
 import { DataSource } from 'typeorm';
 import { CurrentUser, Idempotent, OperationCtx } from '../../common/decorators';
 import type { AuthUser, OperationContext } from '../../common/decorators';
+import { ApiEndpoint, DOCS } from '../../common/api-docs';
 import { ErrorCode } from '../../common/errors/error-code.enum';
 import { GameError } from '../../common/errors/game-error';
 import {
@@ -36,6 +37,7 @@ export class RegionController {
     private readonly operations: OperationService,
   ) {}
 
+  @ApiEndpoint(DOCS.listRegions)
   @Get()
   async list(@CurrentUser() auth: AuthUser) {
     const manager = this.dataSource.manager;
@@ -88,6 +90,7 @@ export class RegionController {
     };
   }
 
+  @ApiEndpoint(DOCS.moveRegion)
   @Post('move')
   @HttpCode(200)
   @Idempotent()

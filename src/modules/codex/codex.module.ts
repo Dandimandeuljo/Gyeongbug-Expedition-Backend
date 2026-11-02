@@ -13,6 +13,7 @@ import { IsInt, IsOptional, Min } from 'class-validator';
 import { DataSource } from 'typeorm';
 import { CurrentUser } from '../../common/decorators';
 import type { AuthUser } from '../../common/decorators';
+import { ApiEndpoint, DOCS } from '../../common/api-docs';
 import { ErrorCode } from '../../common/errors/error-code.enum';
 import { GameError } from '../../common/errors/game-error';
 import {
@@ -46,6 +47,7 @@ export class CodexController {
     private readonly config: ConfigService,
   ) {}
 
+  @ApiEndpoint(DOCS.listCodex)
   @Get()
   async list(@CurrentUser() auth: AuthUser, @Query() query: CodexQueryDto) {
     const context = await this.loadContext(auth.id);
@@ -74,6 +76,7 @@ export class CodexController {
     };
   }
 
+  @ApiEndpoint(DOCS.getCodex)
   @Get(':specialty_id')
   async detail(
     @CurrentUser() auth: AuthUser,

@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, Module, Post } from '@nestjs/common';
 import { IsString } from 'class-validator';
 import { CurrentUser, Idempotent, OperationCtx } from '../../common/decorators';
 import type { AuthUser, OperationContext } from '../../common/decorators';
+import { ApiEndpoint, DOCS } from '../../common/api-docs';
 import { ErrorCode } from '../../common/errors/error-code.enum';
 import { GameError } from '../../common/errors/game-error';
 import { dbNow } from '../../common/time/db-clock';
@@ -19,6 +20,7 @@ const RESET_CONFIRMATION = 'RESET';
 export class ProgressController {
   constructor(private readonly operations: OperationService) {}
 
+  @ApiEndpoint(DOCS.resetProgress)
   @Post('reset')
   @HttpCode(200)
   @Idempotent()

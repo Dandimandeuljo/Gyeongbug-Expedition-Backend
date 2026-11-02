@@ -3,6 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { CurrentUser, Idempotent, OperationCtx } from '../../common/decorators';
 import type { AuthUser, OperationContext } from '../../common/decorators';
+import { ApiEndpoint, DOCS } from '../../common/api-docs';
 import { ErrorCode } from '../../common/errors/error-code.enum';
 import { GameError } from '../../common/errors/game-error';
 import { progressView } from '../../common/views';
@@ -19,6 +20,7 @@ export class EquipmentController {
     private readonly operations: OperationService,
   ) {}
 
+  @ApiEndpoint(DOCS.getEquipment)
   @Get()
   async find(@CurrentUser() user: AuthUser) {
     const manager = this.dataSource.manager;
@@ -55,6 +57,7 @@ export class EquipmentController {
     };
   }
 
+  @ApiEndpoint(DOCS.upgradeEquipment)
   @Post('upgrade')
   @HttpCode(200)
   @Idempotent()

@@ -98,5 +98,16 @@
   },
   "engines": {
     "node": ">=22.22"
+  },
+  "overrides": {
+    "@nestjs/platform-express": {
+      "multer": "^2.5.0"
+    },
+    "@nestjs/swagger": {
+      "js-yaml": "^5.4.1"
+    },
+    "typeorm": {
+      "glob": "^14.0.2"
+    }
   }
 }

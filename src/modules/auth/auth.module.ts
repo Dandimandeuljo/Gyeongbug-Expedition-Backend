@@ -21,6 +21,7 @@ import {
   Public,
 } from '../../common/decorators';
 import type { AuthUser } from '../../common/decorators';
+import { ApiEndpoint, DOCS } from '../../common/api-docs';
 import { ErrorCode } from '../../common/errors/error-code.enum';
 import { GameError } from '../../common/errors/game-error';
 import { dbNow } from '../../common/time/db-clock';
@@ -172,6 +173,7 @@ export class AuthService {
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
+  @ApiEndpoint(DOCS.createUser)
   @Public()
   @CreateUserThrottle()
   @Post()
@@ -179,6 +181,7 @@ export class AuthController {
     return this.auth.createUser(body.name);
   }
 
+  @ApiEndpoint(DOCS.refreshToken)
   @Post('refresh')
   @HttpCode(200)
   refresh(@CurrentUser() user: AuthUser) {

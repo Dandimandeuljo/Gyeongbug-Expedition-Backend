@@ -11,6 +11,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, Min } from 'class-validator';
 import { DataSource } from 'typeorm';
+import { ApiEndpoint, DOCS } from '../../common/api-docs';
 import { ErrorCode } from '../../common/errors/error-code.enum';
 import { GameError } from '../../common/errors/game-error';
 import { imageUrl, regionRef } from '../../common/views';
@@ -37,6 +38,7 @@ export class ProductController {
     private readonly config: ConfigService,
   ) {}
 
+  @ApiEndpoint(DOCS.listProducts)
   @Get()
   async list(@Query() query: ProductQueryDto) {
     const manager = this.dataSource.manager;
@@ -71,6 +73,7 @@ export class ProductController {
     };
   }
 
+  @ApiEndpoint(DOCS.getProduct)
   @Get(':product_id')
   async detail(@Param('product_id', ParseIntPipe) productId: number) {
     const manager = this.dataSource.manager;

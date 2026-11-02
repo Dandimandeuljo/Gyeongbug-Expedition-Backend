@@ -72,6 +72,7 @@ import { UserModule } from './modules/user/user.module';
           .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent')
           .required(),
         SWAGGER_ENABLED: Joi.boolean().required(),
+        TRUST_PROXY_HOPS: Joi.number().integer().min(0).default(0),
         STATIC_ROOT: Joi.string().required(),
         PUBLIC_BASE_URL: Joi.string()
           .uri({ scheme: ['http', 'https'] })

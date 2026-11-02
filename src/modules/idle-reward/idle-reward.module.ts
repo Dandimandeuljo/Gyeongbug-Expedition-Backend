@@ -3,6 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { CurrentUser, Idempotent, OperationCtx } from '../../common/decorators';
 import type { AuthUser, OperationContext } from '../../common/decorators';
+import { ApiEndpoint, DOCS } from '../../common/api-docs';
 import { progressView } from '../../common/views';
 import { OperationService } from '../operation/operation.service';
 import {
@@ -19,6 +20,7 @@ export class IdleRewardController {
     private readonly operations: OperationService,
   ) {}
 
+  @ApiEndpoint(DOCS.previewIdleReward)
   @Get()
   async preview(@CurrentUser() user: AuthUser) {
     const { now, result, rawElapsed } = await this.settlement.preview(
@@ -42,6 +44,7 @@ export class IdleRewardController {
     };
   }
 
+  @ApiEndpoint(DOCS.claimIdleReward)
   @Post()
   @HttpCode(200)
   @Idempotent()
