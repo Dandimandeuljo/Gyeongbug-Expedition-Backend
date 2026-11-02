@@ -34,16 +34,10 @@ npm ci
 
 **2) 환경 변수 파일 만들기**
 
-개발용 값이 채워진 예시 파일을 복사합니다. 값을 고칠 필요는 없습니다.
-
-```powershell
-# Windows PowerShell
-Copy-Item .env.example .env
-```
+다음 명령이 `.env` 파일을 만들고 DB 비밀번호와 JWT 키를 무작위로 채웁니다. 값을 고칠 필요는 없습니다. 이 값은 내 컴퓨터에만 저장되고 저장소에는 올라가지 않습니다.
 
 ```bash
-# macOS, Linux, Git Bash
-cp .env.example .env
+npm run setup:env
 ```
 
 **3) 데이터베이스 실행**
@@ -158,8 +152,8 @@ npm run seed
 | `docker` 명령에서 `cannot connect`, `pipe` 오류 | Docker Desktop 이 꺼져 있습니다. 실행한 뒤 1분쯤 기다립니다 |
 | `port is already allocated` (5433) | 다른 프로그램이 5433 을 쓰고 있습니다. `.env` 의 `POSTGRES_PORT` 와 `DATABASE_URL` 의 포트를 같은 값으로 바꿉니다 |
 | `EADDRINUSE` (3000) | 서버가 이미 켜져 있거나 다른 프로그램이 3000 을 씁니다. `.env` 의 `PORT` 와 `PUBLIC_BASE_URL` 을 바꿉니다 |
-| `Config validation error` | `.env` 가 없거나 값이 잘못되었습니다. 2단계의 복사를 다시 합니다 |
-| `password authentication failed` | `.env` 의 비밀번호를 DB 를 만든 뒤에 바꿨습니다. 5절의 처음 상태로 되돌리기를 실행합니다 |
+| `Config validation error` | `.env` 가 없거나 값이 비어 있습니다. `.env` 를 지우고 `npm run setup:env` 를 다시 실행합니다 |
+| `password authentication failed` | DB 를 만든 뒤 `.env` 의 비밀번호가 바뀌었습니다. 5절의 처음 상태로 되돌리기를 실행합니다 |
 | `relation "users" does not exist` | 테이블이 없습니다. `npm run migration:run` 을 실행합니다 |
 | 스키마 오류가 나거나 `migration:run` 이 실패 | 이전 버전으로 만든 DB 일 수 있습니다. 5절의 처음 상태로 되돌리기를 실행합니다 |
 | 브라우저 콘솔의 CORS 오류 | 프런트엔드 주소가 허용 목록에 없습니다. `.env` 의 `CORS_ORIGIN` 에 추가하고 서버를 다시 시작합니다 |
@@ -198,9 +192,15 @@ static/                     이미지 파일 (/static 주소로 제공)
 
 기능을 고칠 때는 `modules/` 의 해당 폴더에서 `*.controller.ts` 부터 보면 요청이 어떻게 처리되는지 따라갈 수 있습니다.
 
-## 8. 배포
+## 8. 비밀 값 관리
 
-`Dockerfile` 로 운영 이미지를 만듭니다. `.env` 의 값은 운영용으로 바꿉니다. 특히 `JWT_SECRET`, DB 접속 정보, `CORS_ORIGIN`, `PUBLIC_BASE_URL` 을 새로 넣고 `NODE_ENV=production`, `SWAGGER_ENABLED=false` 로 둡니다.
+- `.env` 는 커밋하지 않습니다. `.gitignore` 에 들어 있습니다.
+- `.env.example` 에는 변수 이름과 비밀이 아닌 기본값만 적습니다. 비밀번호, 키, 토큰은 임시 값이라도 적지 않습니다.
+- 비밀 값을 팀원에게 전달할 일이 생기면 저장소나 메신저 대신 비밀 공유 도구를 씁니다.
+
+## 9. 배포
+
+`Dockerfile` 로 운영 이미지를 만듭니다. 운영 값은 호스팅의 환경 변수나 비밀 저장소에 넣고 저장소에는 올리지 않습니다. `JWT_SECRET`, DB 접속 정보, `CORS_ORIGIN`, `PUBLIC_BASE_URL` 을 운영용으로 넣고 `NODE_ENV=production`, `SWAGGER_ENABLED=false` 로 둡니다.
 
 ```bash
 docker build -t gyeongbug-server .

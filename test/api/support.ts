@@ -5,6 +5,7 @@ import {
   PostgreSqlContainer,
   StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
+import { randomBytes } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { configureApp } from '../../src/app.setup';
 import { runSeeds } from '../../src/database/seeds/run-seeds';
@@ -28,7 +29,7 @@ export async function startApp(
     TZ: 'UTC',
     DATABASE_URL: container.getConnectionUri(),
     DATABASE_SSL: 'false',
-    JWT_SECRET: 'test-secret-test-secret-test-secret-1234',
+    JWT_SECRET: randomBytes(32).toString('hex'),
     JWT_TTL_DAYS: '30',
     CORS_ORIGIN: 'http://localhost:5173',
     THROTTLE_PER_USER_PER_MINUTE: '100000',
