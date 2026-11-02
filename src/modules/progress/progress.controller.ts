@@ -27,15 +27,11 @@ export class ProgressController {
     if (body.confirmation !== RESET_CONFIRMATION) {
       throw new GameError(ErrorCode.CONFIRMATION_MISMATCH);
     }
-    return this.operations.execute(
-      operation,
-      async (manager) => {
-        const now = await dbNow(manager);
-        // 하위 행은 ON DELETE CASCADE 로 함께 삭제됩니다.
-        await manager.delete(User, { id: auth.id });
-        return { deleted: true, deleted_at: now };
-      },
-      { deletesUser: true },
-    );
+    return this.operations.execute(operation, async (manager) => {
+      const now = await dbNow(manager);
+      // 하위 행은 ON DELETE CASCADE 로 함께 삭제됩니다.
+      await manager.delete(User, { id: auth.id });
+      return { deleted: true, deleted_at: now };
+    });
   }
 }

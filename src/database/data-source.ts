@@ -8,5 +8,9 @@ if (!url) {
 }
 
 export default new DataSource(
-  buildDataSourceOptions(url, process.env.DATABASE_SSL === 'true'),
+  buildDataSourceOptions(
+    url,
+    process.env.DATABASE_SSL === 'true',
+    process.env.DATABASE_SSL_CA || undefined,
+  ),
 );

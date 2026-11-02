@@ -37,6 +37,7 @@ import { UserModule } from './modules/user/user.module';
           .uri({ scheme: ['postgres', 'postgresql'] })
           .required(),
         DATABASE_SSL: Joi.boolean().required(),
+        DATABASE_SSL_CA: Joi.string().empty('').optional(),
         JWT_SECRET: Joi.string().min(32, 'utf8').required(),
         JWT_TTL_DAYS: Joi.number().integer().positive().required(),
         CORS_ORIGIN: Joi.string()
@@ -86,6 +87,7 @@ import { UserModule } from './modules/user/user.module';
         buildDataSourceOptions(
           config.getOrThrow<string>('DATABASE_URL'),
           String(config.get('DATABASE_SSL')) === 'true',
+          config.get<string>('DATABASE_SSL_CA'),
         ),
     }),
     LoggerModule.forRootAsync({

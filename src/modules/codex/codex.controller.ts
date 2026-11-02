@@ -78,7 +78,8 @@ export class CodexController {
     const item = this.itemView(product, region, context);
     const discovered = item.state !== 'UNDISCOVERED';
     const logbook = context.logbooks.find((l) => l.regionId === region.id);
-    const next = context.regions[index + 1];
+    const order = context.allRegions;
+    const next = order[order.findIndex((r) => r.id === region.id) + 1];
     const products = await this.dataSource.manager.find(ShopProduct, {
       where: { regionProductId: product.id },
       order: { id: 'ASC' },
@@ -88,7 +89,7 @@ export class CodexController {
       description: discovered ? product.description : null,
       source: discovered ? product.detailLink : null,
       completed_at: logbook?.completedAt ?? null,
-      unlocks_region: next ? regionRef(next) : null,
+      unlocks_region: next?.isActive ? regionRef(next) : null,
       products: products.map((shop) => ({
         id: shop.id,
         name: shop.name,
@@ -130,16 +131,17 @@ export class CodexController {
   private async loadContext(userId: number) {
     const manager = this.dataSource.manager;
     const user = await manager.findOneByOrFail(User, { id: userId });
-    const regions = await manager.find(Region, {
-      where: { isActive: true },
+    const allRegions = await manager.find(Region, {
       order: { sortOrder: 'ASC' },
     });
+    const regions = allRegions.filter((region) => region.isActive);
     const products = await manager.find(RegionProduct);
     const logbooks = await manager.findBy(Logbook, { userId });
     const unlocks = await manager.findBy(UserRegionUnlock, { userId });
     return {
       user,
       regions,
+      allRegions,
       products,
       logbooks,
       unlockedIds: new Set(unlocks.map((unlock) => unlock.regionId)),

@@ -32,7 +32,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   override handleRequest<TUser>(error: unknown, user: TUser | false): TUser {
-    if (error || !user) {
+    // DB 장애를 401 로 바꾸면 클라이언트가 멀쩡한 토큰을 지웁니다. 인증 실패만 401 입니다.
+    if (error) {
+      throw error instanceof Error
+        ? error
+        : new GameError(ErrorCode.INTERNAL_ERROR);
+    }
+    if (!user) {
       throw new GameError(ErrorCode.UNAUTHORIZED);
     }
     return user;
@@ -63,7 +69,12 @@ export class AppThrottlerGuard extends ThrottlerGuard {
     if ((props.throttler.name === 'createUser') !== isCreateUser) {
       return true;
     }
-    return super.handleRequest(props);
+    // 계정 생성은 토큰으로 우회하지 못하도록 항상 IP 로 셉니다.
+    return super.handleRequest(
+      isCreateUser
+        ? { ...props, getTracker: (request) => this.ipTracker(request) }
+        : props,
+    );
   }
 
   protected override getTracker(
@@ -79,6 +90,19 @@ export class AppThrottlerGuard extends ThrottlerGuard {
         // 유효하지 않은 토큰은 IP 기준으로 셉니다.
       }
     }
+    return this.ipTracker(request);
+  }
+
+  /** 기본 키는 컨트롤러·핸들러를 포함하므로, 유저당 제한이 전체 경로에 걸리도록 바꿉니다. */
+  protected override generateKey(
+    _context: ExecutionContext,
+    suffix: string,
+    name: string,
+  ): string {
+    return `${name}:${suffix}`;
+  }
+
+  private ipTracker(request: Record<string, unknown>): Promise<string> {
     return Promise.resolve(`ip:${String(request.ip)}`);
   }
 

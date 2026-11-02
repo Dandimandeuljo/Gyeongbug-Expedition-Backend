@@ -55,7 +55,7 @@ export class ProductController {
   @ApiEndpoint(DOCS.getProduct)
   @Get(':product_id')
   async detail(@Param('product_id', ParseIntPipe) productId: number) {
-    if (productId > MAX_INT32) {
+    if (productId < 1 || productId > MAX_INT32) {
       throw new GameError(ErrorCode.PRODUCT_NOT_FOUND);
     }
     const manager = this.dataSource.manager;

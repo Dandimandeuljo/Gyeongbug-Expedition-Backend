@@ -234,7 +234,7 @@ describe('스키마', () => {
       ],
       [
         '같은 operation 키',
-        `INSERT INTO operation (idempotency_key, request_path, request_hash, status_code, response_body, expires_at) SELECT '${opKey}'::uuid, 'p', repeat('a', 64), 200, '{}', now() FROM generate_series(1, 2)`,
+        `INSERT INTO operation (idempotency_key, user_id, request_path, request_hash, status_code, response_body, expires_at) SELECT '${opKey}'::uuid, 1, 'p', repeat('a', 64), 200, '{}', now() FROM generate_series(1, 2)`,
       ],
     ])('23505: %s', async (_name, sql) => {
       expect(await sqlState(sql)).toBe('23505');
@@ -285,8 +285,8 @@ describe('스키마', () => {
     it('23502: expires_at 없는 operation', async () => {
       expect(
         await sqlState(
-          `INSERT INTO operation (idempotency_key, request_path, request_hash, status_code, response_body)
-           VALUES ('${opKey}', 'p', repeat('a', 64), 200, '{}')`,
+          `INSERT INTO operation (idempotency_key, user_id, request_path, request_hash, status_code, response_body)
+           VALUES ('${opKey}', 1, 'p', repeat('a', 64), 200, '{}')`,
         ),
       ).toBe('23502');
     });
@@ -343,11 +343,11 @@ describe('스키마', () => {
         [equipment.id],
       );
       expect(link.count).toBe(0);
-      const [operation]: { user_id: number | null }[] = await ds.query(
+      const [operation]: { user_id: number }[] = await ds.query(
         `SELECT user_id FROM operation WHERE idempotency_key = $1`,
         [key],
       );
-      expect(operation.user_id).toBeNull();
+      expect(operation.user_id).toBe(id);
       const [stat]: { count: number }[] = await ds.query(
         `SELECT count(*)::int AS count FROM equipment_stat`,
       );

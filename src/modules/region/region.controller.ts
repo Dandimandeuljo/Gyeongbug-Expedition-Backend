@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import { CurrentUser, Idempotent, OperationCtx } from '../../common/decorators';
 import type { AuthUser, OperationContext } from '../../common/decorators';
 import { ApiEndpoint, DOCS } from '../../common/api-docs';
@@ -36,10 +36,11 @@ export class RegionController {
   async list(@CurrentUser() auth: AuthUser) {
     const manager = this.dataSource.manager;
     const user = await manager.findOneByOrFail(User, { id: auth.id });
-    const regions = await manager.find(Region, {
-      where: { isActive: true },
+    // 직전 지역은 비활성 지역까지 포함한 진행 순서에서 찾습니다.
+    const allRegions = await manager.find(Region, {
       order: { sortOrder: 'ASC' },
     });
+    const regions = allRegions.filter((region) => region.isActive);
     const products = await manager.find(RegionProduct);
     const logbooks = await manager.findBy(Logbook, { userId: auth.id });
     const unlocks = await manager.findBy(UserRegionUnlock, { userId: auth.id });
@@ -49,9 +50,9 @@ export class RegionController {
     const unlockedIds = new Set(unlockOf.keys());
 
     return {
-      regions: regions.map((region, index) => {
+      regions: regions.map((region) => {
         const product = productOf.get(region.id);
-        const previous = regions[index - 1];
+        const previous = allRegions[allRegions.indexOf(region) - 1];
         const previousProduct = previous && productOf.get(previous.id);
         return {
           id: region.id,
@@ -113,7 +114,7 @@ export class RegionController {
         regionId: target.id,
       });
       if (!unlocked) {
-        throw await this.lockedError(target, auth.id);
+        throw await this.lockedError(manager, target, auth.id);
       }
 
       const product = await manager.findOneByOrFail(RegionProduct, {
@@ -135,11 +136,12 @@ export class RegionController {
     });
   }
 
+  /** 트랜잭션이 연결을 쥐고 있으므로 같은 manager 로 읽어야 풀이 고갈되지 않습니다. */
   private async lockedError(
+    manager: EntityManager,
     target: Region,
     userId: number,
   ): Promise<GameError> {
-    const manager = this.dataSource.manager;
     const previous = await manager
       .createQueryBuilder(Region, 'r')
       .where('r.sortOrder < :order', { order: target.sortOrder })

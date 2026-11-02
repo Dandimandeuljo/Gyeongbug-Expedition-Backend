@@ -30,6 +30,13 @@ describe('속도 제한', () => {
     expect(blocked.body.code).toBe('RATE_LIMITED');
     expect(blocked.body.details.retry_after_seconds).toBeGreaterThan(0);
 
+    // 2번: 토큰을 붙여도 IP 제한을 우회하지 못합니다.
+    const bypass = await http()
+      .post('/api/v1/user')
+      .set('Authorization', `Bearer ${first.body.jwt}`)
+      .send({ name: '제한4' });
+    expect(bypass.status).toBe(429);
+
     const me = () =>
       http()
         .get('/api/v1/user')
@@ -39,6 +46,12 @@ describe('속도 제한', () => {
     await me().expect(200);
     const limited = await me().expect(429);
     expect(limited.body.code).toBe('RATE_LIMITED');
+
+    // 7번: 유저당 제한은 엔드포인트마다 따로 세지 않습니다.
+    await http()
+      .get('/api/v1/regions')
+      .set('Authorization', `Bearer ${first.body.jwt}`)
+      .expect(429);
     await http().get('/health').expect(200);
   });
 });

@@ -625,7 +625,7 @@ describe('게임 API', () => {
         `SELECT user_id FROM operation WHERE idempotency_key = $1`,
         [key],
       );
-      expect(left[0].user_id).toBeNull();
+      expect(left[0].user_id).toBe(id);
       const rows = await t.ds.query(
         `SELECT count(*)::int AS count FROM logbook WHERE user_id = $1`,
         [id],

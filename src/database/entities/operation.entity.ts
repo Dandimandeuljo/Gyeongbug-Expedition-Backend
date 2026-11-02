@@ -1,15 +1,10 @@
-import {
-  Check,
-  Column,
-  Entity,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  PrimaryColumn,
-} from 'typeorm';
-import { User } from './users.entity';
+import { Check, Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
-/** 멱등성 키별 처리 결과. 유저가 삭제되어도 보관 기간까지 남습니다. */
+/**
+ * 멱등성 키별 처리 결과입니다.
+ * user_id 는 FK 가 아닙니다. 초기화로 유저가 삭제된 뒤에도 소유자를 확인해 재생해야 하기 때문입니다.
+ * 유저 ID 는 재사용되지 않고 행은 보관 기간 뒤 삭제됩니다.
+ */
 @Entity('operation')
 @Index('ix_operation_expires_at', ['expiresAt'])
 @Check('ck_operation_status_code', '"status_code" BETWEEN 100 AND 599')
@@ -17,12 +12,8 @@ export class Operation {
   @PrimaryColumn({ type: 'uuid' })
   idempotencyKey!: string;
 
-  @Column({ type: 'int', nullable: true })
-  userId!: number | null;
-
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'user_id' })
-  user?: User | null;
+  @Column({ type: 'int' })
+  userId!: number;
 
   @Column({ type: 'varchar', length: 100 })
   requestPath!: string;
