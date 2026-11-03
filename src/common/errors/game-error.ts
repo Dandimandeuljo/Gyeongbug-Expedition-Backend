@@ -25,6 +25,8 @@ const ERROR_MESSAGES: Readonly<Record<ErrorCode, string>> = {
   [ErrorCode.CLAIM_TOO_EARLY]: '아직 보상을 수령할 수 없습니다.',
   [ErrorCode.EQUIPMENT_MAX_STAGE]: '이미 최고 단계의 장비입니다.',
   [ErrorCode.EQUIPMENT_LEVEL_REQUIRED]: '장비 강화에 필요한 레벨이 부족합니다.',
+  [ErrorCode.EQUIPMENT_REQUIREMENTS_NOT_MET]:
+    '장비 강화에 필요한 골드와 레벨이 부족합니다.',
   [ErrorCode.INSUFFICIENT_GOLD]: '골드가 부족합니다.',
   [ErrorCode.REGION_LOCKED]: '지역 해금에 필요한 조각이 부족합니다.',
   [ErrorCode.ALREADY_IN_REGION]: '이미 해당 지역을 탐험하고 있습니다.',

@@ -1,24 +1,12 @@
-import { RequestMethod, ValidationError, ValidationPipe } from '@nestjs/common';
+import { RequestMethod } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { resolve } from 'node:path';
-import { ErrorCode } from './common/errors/error-code.enum';
-import { GameError } from './common/errors/game-error';
 import { HttpExceptionFilter } from './common/errors/http-exception.filter';
-
-function validationError(errors: ValidationError[]): GameError {
-  let current = errors[0];
-  let field = current?.property ?? 'body';
-  while (current?.children?.length) {
-    current = current.children[0];
-    field = `${field}.${current.property}`;
-  }
-  const reason = Object.values(current?.constraints ?? {})[0] ?? 'INVALID';
-  return new GameError(ErrorCode.VALIDATION_ERROR, { field, reason });
-}
+import { createValidationPipe } from './common/validation/validation.pipe';
 
 /** main.ts 와 통합 테스트가 같은 구성을 쓰도록 모았습니다. */
 export function configureApp(app: NestExpressApplication): void {
@@ -30,16 +18,7 @@ export function configureApp(app: NestExpressApplication): void {
   app.setGlobalPrefix('api/v1', {
     exclude: [{ path: 'health', method: RequestMethod.GET }],
   });
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      stopAtFirstError: true,
-      validationError: { target: false, value: false },
-      exceptionFactory: validationError,
-    }),
-  );
+  app.useGlobalPipes(createValidationPipe());
   app.useGlobalFilters(new HttpExceptionFilter());
   app.enableCors({
     origin: config

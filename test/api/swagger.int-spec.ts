@@ -170,4 +170,41 @@ describe('Swagger', () => {
       await post('/progress/reset').send({ confirmation: 'RESET' }).expect(200),
     );
   });
+
+  it('장비 부족 사유 배열과 복합 오류 상세 및 검증 오류를 문서화한다', () => {
+    const equipment =
+      paths[`${API}/equipment`].get.responses['200'].content['application/json']
+        .schema;
+    expect(equipment.properties.blocked_by).toMatchObject({
+      type: 'array',
+      items: { enum: ['MAX_STAGE', 'LEVEL', 'GOLD'] },
+      example: ['GOLD', 'LEVEL'],
+    });
+    expect(equipment.properties.blocked_by.nullable).not.toBe(true);
+
+    const errors =
+      paths[`${API}/equipment/upgrade`].post.responses['409'].content[
+        'application/json'
+      ].schema.oneOf;
+    const combined = errors.find((schema: any) =>
+      schema.properties.code.enum.includes('EQUIPMENT_REQUIREMENTS_NOT_MET'),
+    );
+    expect(combined.properties.details.required).toEqual([
+      'blocked_by',
+      'required_level',
+      'current_level',
+      'required_gold',
+      'current_gold',
+    ]);
+
+    const validation = paths[`${API}/regions/move`].post.responses[
+      '400'
+    ].content['application/json'].schema.oneOf.find((schema: any) =>
+      schema.properties.code.enum.includes('VALIDATION_ERROR'),
+    );
+    expect(validation.properties.details.required).toEqual(['field', 'reason']);
+    expect(
+      validation.properties.details.properties.reason.description,
+    ).toContain('정수만 입력할 수 있습니다.');
+  });
 });
