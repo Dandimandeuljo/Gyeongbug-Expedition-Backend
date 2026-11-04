@@ -146,6 +146,35 @@ const IDEMPOTENT_ERRORS = [
   E.IDEMPOTENCY_KEY_REUSED,
 ];
 
+const errorDetails: Partial<Record<E, Schema>> = {
+  [E.VALIDATION_ERROR]: obj({
+    field: { ...str, description: '중첩 필드 예: answers.0.selected_index' },
+    reason: {
+      ...str,
+      description:
+        '필수→타입→범위·길이→문자·금칙어 순으로 안내. 정수: 정수만 입력할 수 있습니다. 배열: 배열만 입력할 수 있습니다. 답안 원소: 각 답안은 객체여야 합니다. 닉네임: LENGTH / CHARSET / BANNED_WORD',
+    },
+  }),
+  [E.EQUIPMENT_REQUIREMENTS_NOT_MET]: obj({
+    blocked_by: {
+      ...arr(oneOf('GOLD', 'LEVEL')),
+      minItems: 2,
+      maxItems: 2,
+      uniqueItems: true,
+      example: ['GOLD', 'LEVEL'],
+    },
+    required_level: int,
+    current_level: int,
+    required_gold: int,
+    current_gold: int,
+  }),
+  [E.EQUIPMENT_LEVEL_REQUIRED]: obj({
+    required_level: int,
+    current_level: int,
+  }),
+  [E.INSUFFICIENT_GOLD]: obj({ required: int, current: int }),
+};
+
 /** 요청·응답·오류 코드를 Swagger 에 함께 적습니다. API 명세 문서와 내용을 맞춥니다. */
 export function ApiEndpoint(doc: EndpointDoc) {
   const errors = [
@@ -163,7 +192,23 @@ export function ApiEndpoint(doc: EndpointDoc) {
     ApiOperation({ summary: doc.summary }),
     ApiResponse({ status: doc.status ?? 200, schema: doc.response }),
     ...[...byStatus].map(([status, codes]) =>
-      ApiResponse({ status, description: codes.join(', ') }),
+      ApiResponse({
+        status,
+        description: codes.join(', '),
+        schema: {
+          oneOf: codes.map((code) =>
+            obj({
+              code: oneOf(code),
+              message: str,
+              details: errorDetails[code] ?? {
+                type: 'object',
+                nullable: true,
+                additionalProperties: true,
+              },
+            }),
+          ),
+        },
+      }),
     ),
     ...(doc.isPublic ? [] : [ApiBearerAuth()]),
     ...(doc.idempotent
@@ -244,7 +289,14 @@ export const DOCS = {
       gold_after_settle: int,
       level_after_settle: int,
       can_upgrade: bool,
-      blocked_by: nullable(oneOf('MAX_STAGE', 'LEVEL', 'GOLD')),
+      blocked_by: {
+        ...arr(oneOf('MAX_STAGE', 'LEVEL', 'GOLD')),
+        uniqueItems: true,
+        maxItems: 2,
+        description:
+          '가능하면 [], 최고 단계면 [MAX_STAGE], 둘 다 부족하면 [GOLD, LEVEL]',
+        example: ['GOLD', 'LEVEL'],
+      },
     }),
   },
   upgradeEquipment: {
@@ -261,6 +313,7 @@ export const DOCS = {
     }),
     errors: [
       E.EQUIPMENT_MAX_STAGE,
+      E.EQUIPMENT_REQUIREMENTS_NOT_MET,
       E.EQUIPMENT_LEVEL_REQUIRED,
       E.INSUFFICIENT_GOLD,
     ],

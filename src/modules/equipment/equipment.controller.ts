@@ -11,6 +11,7 @@ import { Equipment } from '../../database/entities';
 import { OperationService } from '../operation/operation.service';
 import { SettlementService } from '../settlement/settlement.service';
 import { equipmentView } from '../user/user.view';
+import { upgradeBlockers } from './upgrade-blockers';
 
 @Controller('equipment')
 export class EquipmentController {
@@ -28,14 +29,10 @@ export class EquipmentController {
     const { equipment, statRatio } = state;
     const next = await this.settlement.nextUpgrade(manager, equipment);
     const isMax = equipment.curUpgrade >= equipment.maxUpgrade || !next;
-    let blockedBy: 'MAX_STAGE' | 'LEVEL' | 'GOLD' | null = null;
-    if (isMax) {
-      blockedBy = 'MAX_STAGE';
-    } else if (result.newLevel < next.requiredLevel) {
-      blockedBy = 'LEVEL';
-    } else if (result.newGold < next.cost) {
-      blockedBy = 'GOLD';
-    }
+    const blockedBy = upgradeBlockers(equipment, next, {
+      level: result.newLevel,
+      gold: result.newGold,
+    });
     return {
       stage: equipment.curUpgrade,
       gold_bonus_percent: statRatio * (equipment.curUpgrade - 1),
@@ -52,7 +49,7 @@ export class EquipmentController {
       gold: state.user.gold,
       gold_after_settle: result.newGold,
       level_after_settle: result.newLevel,
-      can_upgrade: blockedBy === null,
+      can_upgrade: blockedBy.length === 0,
       blocked_by: blockedBy,
     };
   }
@@ -84,13 +81,23 @@ export class EquipmentController {
           stage: equipment.curUpgrade,
         });
       }
-      if (player.level < next.requiredLevel) {
+      const blockedBy = upgradeBlockers(equipment, next, player);
+      if (blockedBy.includes('GOLD') && blockedBy.includes('LEVEL')) {
+        throw new GameError(ErrorCode.EQUIPMENT_REQUIREMENTS_NOT_MET, {
+          blocked_by: blockedBy,
+          required_level: next.requiredLevel,
+          current_level: player.level,
+          required_gold: next.cost,
+          current_gold: player.gold,
+        });
+      }
+      if (blockedBy.includes('LEVEL')) {
         throw new GameError(ErrorCode.EQUIPMENT_LEVEL_REQUIRED, {
           required_level: next.requiredLevel,
           current_level: player.level,
         });
       }
-      if (player.gold < next.cost) {
+      if (blockedBy.includes('GOLD')) {
         throw new GameError(ErrorCode.INSUFFICIENT_GOLD, {
           required: next.cost,
           current: player.gold,

@@ -68,6 +68,7 @@ describe('GameError', () => {
         ErrorCode.CLAIM_TOO_EARLY,
         ErrorCode.EQUIPMENT_MAX_STAGE,
         ErrorCode.EQUIPMENT_LEVEL_REQUIRED,
+        ErrorCode.EQUIPMENT_REQUIREMENTS_NOT_MET,
         ErrorCode.INSUFFICIENT_GOLD,
         ErrorCode.REGION_LOCKED,
         ErrorCode.ALREADY_IN_REGION,

@@ -1,5 +1,11 @@
 import { Transform } from 'class-transformer';
-import { IsString, Length, Matches, registerDecorator } from 'class-validator';
+import {
+  IsDefined,
+  IsString,
+  Length,
+  Matches,
+  registerDecorator,
+} from 'class-validator';
 import {
   BANNED_WORDS,
   NAME_MAX_LENGTH,
@@ -26,6 +32,7 @@ export class CreateUserDto {
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
+  @IsDefined({ message: 'LENGTH' })
   @IsString({ message: 'LENGTH' })
   @Length(NAME_MIN_LENGTH, NAME_MAX_LENGTH, { message: 'LENGTH' })
   @Matches(/^[가-힣A-Za-z0-9]+$/, { message: 'CHARSET' })

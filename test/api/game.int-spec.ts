@@ -260,6 +260,20 @@ describe('게임 API', () => {
   });
 
   describe('장비', () => {
+    const equipmentState = (id: number) =>
+      t.ds.query(
+        `SELECT to_jsonb(u) AS player, to_jsonb(e) AS equipment,
+                to_jsonb(ir) AS idle, to_jsonb(l) AS logbook,
+                (SELECT jsonb_agg(to_jsonb(ur) ORDER BY ur.region_id)
+                   FROM user_region_unlock ur WHERE ur.user_id = u.id) AS unlocks
+           FROM users u
+           JOIN equipment e ON e.user_id = u.id
+           JOIN idle_reward ir ON ir.user_id = u.id
+           JOIN logbook l ON l.user_id = u.id AND l.region_id = u.cur_region_id
+          WHERE u.id = $1`,
+        [id],
+      );
+
     it('9절 9행: 요구 레벨 미달이면 정산과 차감을 모두 취소한다', async () => {
       const { jwt, id } = await newUser();
       await setUser(id, 'level = 2, exp = 100, gold = 1000');
@@ -268,6 +282,11 @@ describe('게임 API', () => {
         [id],
       );
       await elapse(id, 600);
+      const info = await get('/equipment', jwt).expect(200);
+      expect(info.body).toMatchObject({
+        can_upgrade: false,
+        blocked_by: ['LEVEL'],
+      });
       const res = await post('/equipment/upgrade', jwt).expect(409);
       expect(res.body).toMatchObject({
         code: 'EQUIPMENT_LEVEL_REQUIRED',
@@ -289,7 +308,7 @@ describe('게임 API', () => {
         gold: 0,
         gold_after_settle: 100,
         can_upgrade: true,
-        blocked_by: null,
+        blocked_by: [],
         next: { stage: 2, gold_bonus_percent: 10, upgrade_cost: 100 },
       });
       const res = await post('/equipment/upgrade', jwt).expect(200);
@@ -311,6 +330,11 @@ describe('게임 API', () => {
 
     it('골드 부족과 최고 단계를 구분한다', async () => {
       const { jwt, id } = await newUser();
+      const poorInfo = await get('/equipment', jwt).expect(200);
+      expect(poorInfo.body).toMatchObject({
+        can_upgrade: false,
+        blocked_by: ['GOLD'],
+      });
       const poor = await post('/equipment/upgrade', jwt).expect(409);
       expect(poor.body).toMatchObject({
         code: 'INSUFFICIENT_GOLD',
@@ -320,18 +344,120 @@ describe('게임 API', () => {
         `UPDATE equipment SET cur_upgrade = 5 WHERE user_id = $1`,
         [id],
       );
+      await elapse(id, 600);
+      const beforeMax = await equipmentState(id);
+      t.rng.push(0, 0);
       const max = await post('/equipment/upgrade', jwt).expect(409);
       expect(max.body).toMatchObject({
         code: 'EQUIPMENT_MAX_STAGE',
         details: { stage: 5 },
       });
+      expect(await equipmentState(id)).toEqual(beforeMax);
+      expect(t.rng).toEqual([0, 0]);
       const info = await get('/equipment', jwt);
       expect(info.body).toMatchObject({
         is_max: true,
         next: null,
-        blocked_by: 'MAX_STAGE',
+        can_upgrade: false,
+        blocked_by: ['MAX_STAGE'],
       });
     });
+
+    it('골드와 레벨이 모두 부족하면 함께 안내하고 정산을 롤백하며 같은 키로 재생한다', async () => {
+      const { jwt, id } = await newUser();
+      await setUser(
+        id,
+        'level = 2, exp = 100, gold = 100, gold_remainder = 123, exp_remainder = 456',
+      );
+      await t.ds.query(
+        `UPDATE equipment SET cur_upgrade = 2 WHERE user_id = $1`,
+        [id],
+      );
+      await elapse(id, 600);
+      const before = await equipmentState(id);
+      const info = await get('/equipment', jwt).expect(200);
+      expect(info.body).toMatchObject({
+        can_upgrade: false,
+        blocked_by: ['GOLD', 'LEVEL'],
+        level_after_settle: 2,
+      });
+      expect(info.body.gold_after_settle).toBeLessThan(250);
+
+      t.rng.push(0, 0);
+      const key = randomUUID();
+      const first = await post('/equipment/upgrade', jwt, key).expect(409);
+      expect(first.body).toMatchObject({
+        code: 'EQUIPMENT_REQUIREMENTS_NOT_MET',
+        details: {
+          blocked_by: ['GOLD', 'LEVEL'],
+          required_level: 3,
+          current_level: 2,
+          required_gold: 250,
+        },
+      });
+      expect(first.body.details.current_gold).toBeGreaterThan(100);
+      expect(first.body.details.current_gold).toBeLessThan(250);
+      expect(t.rng).toHaveLength(0);
+      expect(await equipmentState(id)).toEqual(before);
+
+      // 이제 강화할 수 있어도 같은 요청 키에는 당시의 실패 영수증을 돌려줍니다.
+      await setUser(id, 'level = 3, exp = 300, gold = 1000');
+      const beforeReplay = await equipmentState(id);
+      t.rng.push(0, 0);
+      const replay = await post('/equipment/upgrade', jwt, key).expect(409);
+      expect(replay.body).toEqual(first.body);
+      expect(replay.headers['idempotent-replayed']).toBe('true');
+      expect(await equipmentState(id)).toEqual(beforeReplay);
+      expect(t.rng).toEqual([0, 0]);
+      const receipt = await get(`/operations/${key}`, jwt).expect(200);
+      expect(receipt.body.status_code).toBe(409);
+      expect(receipt.body.response).toEqual(first.body);
+    });
+
+    it.each([
+      {
+        label: '골드만 충족',
+        exp: 100,
+        gold: 200,
+        blockedBy: ['LEVEL'],
+        code: 'EQUIPMENT_LEVEL_REQUIRED',
+        details: { required_level: 3, current_level: 2 },
+      },
+      {
+        label: '레벨만 충족',
+        exp: 295,
+        gold: 0,
+        blockedBy: ['GOLD'],
+        code: 'INSUFFICIENT_GOLD',
+        details: { required: 250 },
+      },
+    ])(
+      '둘 다 부족하다가 정산으로 $label 하면 남은 사유만 반환한다',
+      async (scenario) => {
+        const { jwt, id } = await newUser();
+        await t.ds.query(
+          `UPDATE users SET level = 2, exp = $2, gold = $3 WHERE id = $1`,
+          [id, scenario.exp, scenario.gold],
+        );
+        await t.ds.query(
+          `UPDATE equipment SET cur_upgrade = 2 WHERE user_id = $1`,
+          [id],
+        );
+        await elapse(id, 600);
+        const before = await equipmentState(id);
+        const info = await get('/equipment', jwt).expect(200);
+        expect(info.body).toMatchObject({
+          can_upgrade: false,
+          blocked_by: scenario.blockedBy,
+        });
+        const res = await post('/equipment/upgrade', jwt).expect(409);
+        expect(res.body).toMatchObject({
+          code: scenario.code,
+          details: scenario.details,
+        });
+        expect(await equipmentState(id)).toEqual(before);
+      },
+    );
   });
 
   describe('지역', () => {
