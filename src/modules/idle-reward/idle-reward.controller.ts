@@ -39,6 +39,7 @@ export class IdleRewardController {
       gold: result.goldGain,
       exp: result.expGain,
       level_after: result.newLevel,
+      mobs_defeated: result.judgments,
       piece_judgments: result.judgments,
       server_time: now,
     };

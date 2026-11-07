@@ -45,10 +45,12 @@ const settled = obj({
   capped: bool,
   gold: int,
   exp: int,
+  mobs_defeated: int,
   pieces: obj({
     region_id: int,
     specialty_id: int,
     name: str,
+    drop_rate_bp: int,
     judgments: int,
     gained: int,
     total: int,
@@ -253,6 +255,7 @@ export const DOCS = {
       gold: int,
       exp: int,
       level_after: int,
+      mobs_defeated: int,
       piece_judgments: int,
       server_time: time,
     }),
@@ -329,6 +332,7 @@ export const DOCS = {
           sort_order: int,
           gold_per_minute: int,
           exp_per_minute: int,
+          piece_drop_bp: int,
           description: nullable(str),
           specialty: obj({
             id: int,

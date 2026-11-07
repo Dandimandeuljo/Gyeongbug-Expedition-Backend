@@ -46,11 +46,11 @@ export async function startApp(
     AppModule: Type<unknown>;
   };
 
-  // 큐가 비면 실패(99)를 돌려줍니다.
+  // 큐가 비면 실패(9999, 모든 드롭률보다 큼)를 돌려줍니다.
   const rng: number[] = [];
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(SETTLEMENT_RNG)
-    .useValue(() => rng.shift() ?? 99)
+    .useValue(() => rng.shift() ?? 9999)
     .compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
   configureApp(app);

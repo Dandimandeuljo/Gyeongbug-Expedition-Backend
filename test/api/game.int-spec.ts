@@ -111,7 +111,7 @@ describe('게임 API', () => {
   });
 
   describe('방치 보상', () => {
-    it('9절 3행: 1시간이면 300골드 60XP, 조각은 미리보기에 없다', async () => {
+    it('v1.2: 1시간이면 몹 900마리가 300골드 60XP 를 주고, 조각은 미리보기에 없다', async () => {
       const { jwt, id } = await newUser();
       await elapse(id, 3600);
       const preview = await get('/idle-reward', jwt).expect(200);
@@ -120,7 +120,8 @@ describe('게임 API', () => {
         claimable: true,
         gold: 300,
         exp: 60,
-        piece_judgments: 12,
+        mobs_defeated: 900,
+        piece_judgments: 900,
       });
       expect(preview.body.pieces).toBeUndefined();
 
@@ -128,7 +129,13 @@ describe('게임 API', () => {
       expect(res.body).toMatchObject({
         gold: 300,
         exp: 60,
-        gained: { gold: 300, exp: 60, pieces: { judgments: 12, gained: 3 } },
+        gained: {
+          gold: 300,
+          exp: 60,
+          mobs_defeated: 900,
+          // 추첨이 모두 실패해도 301·602번째 몹은 확정 드롭이다.
+          pieces: { judgments: 900, gained: 2, drop_rate_bp: 60 },
+        },
         state_version: 1,
       });
     });
@@ -142,7 +149,8 @@ describe('게임 API', () => {
         capped: true,
         gold: 2400,
         exp: 480,
-        pieces: { judgments: 96 },
+        mobs_defeated: 7200,
+        pieces: { judgments: 7200 },
       });
     });
 
@@ -164,21 +172,22 @@ describe('게임 API', () => {
       expect(res.body.gained).toMatchObject({ gold: 315, exp: 60 });
     });
 
-    it('5분 미만 시간은 이월해 다음 정산에서 판정한다', async () => {
+    it('4초 미만 시간은 이월해 다음 정산의 몹 수에 더한다', async () => {
       const { jwt, id } = await newUser();
-      await elapse(id, 200);
+      await elapse(id, 62);
       const first = await post('/idle-reward', jwt).expect(200);
       expect(first.body.gained.pieces).toMatchObject({
-        judgments: 0,
-        carry_seconds: 200,
+        judgments: 15,
+        gained: 0,
+        carry_seconds: 2,
+        consecutive_fails: 15,
       });
-      await elapse(id, 100);
+      await elapse(id, 62);
       t.rng.push(0);
       const second = await post('/idle-reward', jwt).expect(200);
-      expect(second.body.gained.pieces).toMatchObject({
-        judgments: 1,
-        gained: 1,
-        carry_seconds: 0,
+      expect(second.body.gained).toMatchObject({
+        mobs_defeated: 16,
+        pieces: { judgments: 16, gained: 1, carry_seconds: 0 },
       });
     });
   });
@@ -520,7 +529,7 @@ describe('게임 API', () => {
         `INSERT INTO user_region_unlock (user_id, region_id) VALUES ($1, 2)`,
         [id],
       );
-      await elapse(id, 180);
+      await elapse(id, 182);
       const move = (target: number) =>
         post('/regions/move', jwt).send({ target_region_id: target });
       const res = await move(2).expect(200);
@@ -528,16 +537,22 @@ describe('게임 API', () => {
         gold: 15,
         cur_region: { code: 'R02' },
         previous_region: { code: 'R01' },
-        settled: { pieces: { region_id: 1, carry_seconds: 180 } },
+        settled: { pieces: { region_id: 1, judgments: 45, carry_seconds: 2 } },
       });
-      await elapse(id, 180);
+      await elapse(id, 181);
       const back = await move(1).expect(200);
       expect(back.body.settled.pieces).toMatchObject({
         region_id: 2,
         name: '간고등어',
-        judgments: 0,
-        carry_seconds: 180,
+        drop_rate_bp: 55,
+        judgments: 45,
+        carry_seconds: 1,
       });
+      const carried: { carry_seconds: number }[] = await t.ds.query(
+        `SELECT carry_seconds FROM logbook WHERE user_id = $1 AND region_id = 1`,
+        [id],
+      );
+      expect(carried[0].carry_seconds).toBe(2);
       const same = await move(1).expect(409);
       expect(same.body.code).toBe('ALREADY_IN_REGION');
       const inactive = await move(3).expect(404);

@@ -11,19 +11,21 @@ export async function runSeeds(dataSource: DataSource): Promise<void> {
   await dataSource.transaction(async (manager) => {
     for (const region of REGION_SEED) {
       await manager.query(
-        `INSERT INTO region (id, name, sort_order, gold_per_minute, exp_per_minute, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO region (id, name, sort_order, gold_per_minute, exp_per_minute, piece_drop_bp, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (id) DO UPDATE SET
            name = EXCLUDED.name,
            sort_order = EXCLUDED.sort_order,
            gold_per_minute = EXCLUDED.gold_per_minute,
-           exp_per_minute = EXCLUDED.exp_per_minute`,
+           exp_per_minute = EXCLUDED.exp_per_minute,
+           piece_drop_bp = EXCLUDED.piece_drop_bp`,
         [
           region.id,
           region.name,
           region.sortOrder,
           region.gold,
           region.exp,
+          region.dropBp,
           region.active,
         ],
       );

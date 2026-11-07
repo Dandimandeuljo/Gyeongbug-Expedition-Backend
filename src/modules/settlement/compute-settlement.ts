@@ -2,10 +2,9 @@ import {
   BASE_PERCENT,
   IDLE_CAP_SECONDS,
   INITIAL_EQUIPMENT_STAGE,
+  MOB_INTERVAL_SECONDS,
   PIECE_MAX_JUDGMENTS_PER_SETTLEMENT,
   PIECE_PITY_FAILS,
-  PIECE_SLOT_SECONDS,
-  PIECE_SUCCESS_PERCENT,
   PIECES_PER_SUCCESS,
   REMAINDER_DIVISOR,
 } from './game-rules.constants';
@@ -26,6 +25,8 @@ export interface SettlementInput {
   carrySeconds: number;
   consecutiveFails: number;
   requiredPieces: number;
+  /** 현재 지역의 몹 1마리당 조각 드롭률(만분율). */
+  dropRateBp: number;
 }
 
 export interface SettlementResult {
@@ -35,6 +36,7 @@ export interface SettlementResult {
   expGain: number;
   newGoldRemainder: number;
   newExpRemainder: number;
+  /** 처치한 몹 수. 몹마다 드롭을 한 번 추첨하므로 판정 횟수와 같다. */
   judgments: number;
   piecesGain: number;
   newCarrySeconds: number;
@@ -49,7 +51,7 @@ export interface SettlementResult {
   rolls: boolean[];
 }
 
-/** 0 이상 100 미만의 정수를 반환한다. */
+/** 0 이상 DROP_RATE_DENOMINATOR(10000) 미만의 정수를 반환한다. */
 export type Rng = () => number;
 
 /** 호출자가 검증한 정수 상태로 계산하며, 시각 조회나 상태 저장은 하지 않는다. */
@@ -73,9 +75,11 @@ export function computeSettlement(
   const goldGain = Math.floor(nGold / REMAINDER_DIVISOR);
   const expGain = Math.floor(nExp / REMAINDER_DIVISOR);
 
+  // 몹은 유효 탐험 시간 4초마다 1마리 자동 처치된다 (GAME_RULES v1.2).
+  // 위 골드·경험치는 처치한 몹들이 준 보상의 합이고, 조각은 몹마다 따로 추첨한다.
   const totalSeconds = elapsedSeconds + input.carrySeconds;
   const judgments = Math.min(
-    Math.floor(totalSeconds / PIECE_SLOT_SECONDS),
+    Math.floor(totalSeconds / MOB_INTERVAL_SECONDS),
     PIECE_MAX_JUDGMENTS_PER_SETTLEMENT,
   );
   let piecesGain = 0;
@@ -84,7 +88,7 @@ export function computeSettlement(
   for (let judgment = 0; judgment < judgments; judgment += 1) {
     // 확정 성공에서는 RNG를 호출하지 않는다.
     const success =
-      newConsecutiveFails >= PIECE_PITY_FAILS || rng() < PIECE_SUCCESS_PERCENT;
+      newConsecutiveFails >= PIECE_PITY_FAILS || rng() < input.dropRateBp;
     rolls.push(success);
     if (success) {
       piecesGain += PIECES_PER_SUCCESS;
@@ -106,7 +110,7 @@ export function computeSettlement(
     newExpRemainder: nExp % REMAINDER_DIVISOR,
     judgments,
     piecesGain,
-    newCarrySeconds: totalSeconds % PIECE_SLOT_SECONDS,
+    newCarrySeconds: totalSeconds % MOB_INTERVAL_SECONDS,
     newConsecutiveFails,
     newGold: input.gold + goldGain,
     newExp,
