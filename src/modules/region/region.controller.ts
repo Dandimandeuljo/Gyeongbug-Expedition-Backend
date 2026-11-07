@@ -61,6 +61,7 @@ export class RegionController {
           sort_order: region.sortOrder,
           gold_per_minute: region.goldPerMinute,
           exp_per_minute: region.expPerMinute,
+          piece_drop_bp: region.pieceDropBp,
           description: region.description,
           specialty: product && {
             id: product.id,

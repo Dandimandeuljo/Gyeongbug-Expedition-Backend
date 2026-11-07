@@ -21,7 +21,7 @@ import type {
 } from './compute-settlement';
 import {
   CLAIM_MIN_SECONDS,
-  PIECE_SUCCESS_PERCENT,
+  DROP_RATE_DENOMINATOR,
 } from './game-rules.constants';
 
 export const SETTLEMENT_RNG = 'SETTLEMENT_RNG';
@@ -53,10 +53,12 @@ function settledView(
     capped: result.capped,
     gold: result.goldGain,
     exp: result.expGain,
+    mobs_defeated: result.judgments,
     pieces: {
       region_id: state.region.id,
       specialty_id: state.product.id,
       name: state.product.name,
+      drop_rate_bp: state.region.pieceDropBp,
       judgments: result.judgments,
       gained: result.piecesGain,
       total: result.newPieces,
@@ -87,6 +89,7 @@ function toInput(state: PlayerState, elapsed: number): SettlementInput {
     carrySeconds: state.logbook.carrySeconds,
     consecutiveFails: state.logbook.consecutiveFails,
     requiredPieces: state.product.requiredPieces,
+    dropRateBp: state.region.pieceDropBp,
   };
 }
 
@@ -173,14 +176,14 @@ export class SettlementService {
         };
   }
 
-  /** 저장 없이 지금 정산하면 받을 양을 계산합니다. 추첨 결과는 쓰지 않습니다. */
+  /** 저장 없이 지금 정산하면 받을 양을 계산합니다. 조각 추첨 결과는 쓰지 않습니다. */
   async preview(manager: EntityManager, userId: number) {
     const state = await this.loadState(manager, userId, false);
     const now = await dbNow(manager);
     const elapsed = elapsedSeconds(now, state.idle.recentReceive);
     const result = computeSettlement(
       toInput(state, elapsed),
-      () => PIECE_SUCCESS_PERCENT,
+      () => DROP_RATE_DENOMINATOR - 1,
     );
     return { state, now, result, rawElapsed: elapsed };
   }

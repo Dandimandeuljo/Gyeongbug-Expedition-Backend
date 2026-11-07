@@ -14,10 +14,10 @@ import { User } from './users.entity';
 @Entity('logbook')
 @Unique('uq_logbook_user_region', ['userId', 'regionId'])
 @Check('ck_logbook_cur_collect_nonneg', '"cur_collect" >= 0')
-@Check('ck_logbook_carry_seconds_range', '"carry_seconds" BETWEEN 0 AND 299')
+@Check('ck_logbook_carry_seconds_range', '"carry_seconds" BETWEEN 0 AND 3')
 @Check(
   'ck_logbook_consecutive_fails_range',
-  '"consecutive_fails" BETWEEN 0 AND 3',
+  '"consecutive_fails" BETWEEN 0 AND 300',
 )
 export class Logbook {
   @PrimaryGeneratedColumn('identity', { generatedIdentity: 'BY DEFAULT' })

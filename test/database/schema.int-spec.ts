@@ -93,7 +93,32 @@ describe('스키마', () => {
       expect(log.upQueries.map((query) => query.query)).toEqual([]);
     });
 
+    it('MobDrop 은 기존 이월 초와 연속 실패를 4초 몹 기준으로 옮긴다', async () => {
+      await ds.undoLastMigration();
+      const userId = await createUser();
+      await ds.query(
+        `INSERT INTO logbook (user_id, region_id, region_product_id, carry_seconds, consecutive_fails)
+         VALUES ($1, 1, 1, 299, 3)`,
+        [userId],
+      );
+      await ds.runMigrations();
+      const rows: { carry_seconds: number; consecutive_fails: number }[] =
+        await ds.query(
+          `SELECT carry_seconds, consecutive_fails FROM logbook WHERE user_id = $1`,
+          [userId],
+        );
+      expect(rows).toEqual([{ carry_seconds: 3, consecutive_fails: 0 }]);
+      const rates: { piece_drop_bp: number }[] = await ds.query(
+        `SELECT piece_drop_bp FROM region ORDER BY sort_order`,
+      );
+      expect(rates.map((row) => row.piece_drop_bp)).toEqual([
+        60, 55, 50, 45, 40, 36, 33, 30,
+      ]);
+      await ds.query(`DELETE FROM users WHERE id = $1`, [userId]);
+    });
+
     it('revert 후 테이블이 사라지고 다시 적용된다', async () => {
+      await ds.undoLastMigration();
       await ds.undoLastMigration();
       expect(await tableNames()).toEqual([]);
       await ds.runMigrations();
@@ -246,8 +271,10 @@ describe('스키마', () => {
       ['exp -1', `UPDATE users SET exp = -1`],
       ['gold_remainder 6000', `UPDATE users SET gold_remainder = 6000`],
       ['exp_remainder 6000', `UPDATE users SET exp_remainder = 6000`],
-      ['carry_seconds 300', `UPDATE logbook SET carry_seconds = 300`],
-      ['consecutive_fails 4', `UPDATE logbook SET consecutive_fails = 4`],
+      ['carry_seconds 4', `UPDATE logbook SET carry_seconds = 4`],
+      ['consecutive_fails 301', `UPDATE logbook SET consecutive_fails = 301`],
+      ['piece_drop_bp 0', `UPDATE region SET piece_drop_bp = 0`],
+      ['piece_drop_bp 10001', `UPDATE region SET piece_drop_bp = 10001`],
       ['cur_upgrade 6', `UPDATE equipment SET cur_upgrade = 6`],
       ['order_no 4', `UPDATE today_region_quiz SET order_no = 4`],
       [
