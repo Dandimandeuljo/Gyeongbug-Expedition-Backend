@@ -4,7 +4,6 @@
 
 | 구분 | 주소 |
 |---|---|
-| 시연 서버 | <https://49-50-132-72.sslip.io> |
 | 프런트엔드 저장소 | <https://github.com/parkjinacosmos/Gyeongbuk-Expedition-Frontend> |
 
 API 명세와 게임 규칙 같은 기획 문서는 이 저장소에 없고 팀이 따로 보관합니다. 코드 주석의 `GAME_RULES`, `API`, `DATABASE`, `ARCHITECTURE` 는 그 문서를 가리킵니다. API 는 서버를 실행한 뒤 Swagger(`/docs`)에서 확인할 수 있습니다.
