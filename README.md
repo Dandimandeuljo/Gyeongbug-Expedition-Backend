@@ -30,9 +30,9 @@
 | 구분 | 저장소 |
 | --- | --- |
 | 백엔드 (이 저장소) | <https://github.com/juhyeonseok/Gyeongbug-Expedition-Backend> |
-| 프런트엔드 | <https://github.com/parkjinacosmos/Gyeongbuk-Expedition-Frontend> |
+| 프론트엔드  | <https://github.com/parkjinacosmos/Gyeongbuk-Expedition-Frontend> |
 
-> 서비스의 기획 배경과 화면 소개는 프런트엔드 저장소의 README 에 있습니다. API 명세와 게임 규칙 원문 같은 기획 문서는 팀이 따로 보관하며, 코드 주석의 `GAME_RULES`, `API`, `DATABASE`, `ARCHITECTURE` 는 그 문서를 가리킵니다.
+> 서비스의 기획 배경과 화면 소개는 프론트엔드 저장소의 README 에 있습니다. API 명세와 게임 규칙 원문 같은 기획 문서는 팀이 따로 보관하며, 코드 주석의 `GAME_RULES`, `API`, `DATABASE`, `ARCHITECTURE` 는 그 문서를 가리킵니다.
 
 
 ## 🎮 Game Rules
@@ -158,7 +158,7 @@
 
 ```mermaid
 flowchart TD
-    Client["프런트엔드<br/>(React)"] --> Guard["속도 제한 · JWT 인증"]
+    Client["프론트엔드 <br/>(React)"] --> Guard["속도 제한 · JWT 인증"]
     Guard --> Idem["중복 요청 방지<br/>(Idempotency-Key)"]
     Idem --> Controller["기능별 Controller"]
     Controller --> Operation["OperationService<br/>유저 행 잠금 + 트랜잭션"]
@@ -326,7 +326,7 @@ npm run seed
 
 ---
 
-## 🤝 프런트엔드 연동 가이드
+## 🤝 프론트엔드 연동 가이드
 
 | 항목 | 내용 |
 | --- | --- |
@@ -395,7 +395,7 @@ npm run seed
 | `password authentication failed` | 접속 대상과 DB 의 실제 비밀번호가 `.env` 와 일치하는지 확인합니다. 기존 DB 는 `.env` 수정만으로 비밀번호가 바뀌지 않습니다. 데이터 삭제로 해결하지 말고 접속 설정을 먼저 맞춥니다 |
 | `relation "users" does not exist` | 테이블이 없습니다. `npm run migration:run` 을 실행합니다 |
 | 스키마 오류가 나거나 `migration:run` 이 실패 | 실제 오류와 적용된 migration 을 확인합니다. 초기 개발 중 `InitSchema` 를 직접 고친 이력이 있어 구버전 DB 는 별도 이행이 필요할 수 있습니다. DB 삭제를 기본 해결책으로 사용하지 않습니다 |
-| 브라우저 콘솔의 CORS 오류 | 프런트엔드 주소가 허용 목록에 없습니다. `.env` 의 `CORS_ORIGIN` 에 추가하고 서버를 다시 시작합니다 |
+| 브라우저 콘솔의 CORS 오류 | 프론트엔드  주소가 허용 목록에 없습니다. `.env` 의 `CORS_ORIGIN` 에 추가하고 서버를 다시 시작합니다 |
 | `POST /quiz/today` 가 `QUIZ_NOT_AVAILABLE` | 현재 지역에 활성 문항이 3개 이상 있는지 확인합니다. 청송·안동의 기본 문항이 없다면 시드를 적용합니다. 나머지 6개 지역은 아직 문항이 없습니다 |
 | `POST /user` 가 `429` | 개발 중 캐릭터를 시간당 10개 넘게 만들었습니다. `.env` 의 `THROTTLE_CREATE_USER_PER_IP_PER_HOUR` 를 늘리고 서버를 다시 시작합니다 |
 | 통합 테스트가 시작 전에 실패 | Docker 접근, 이미지 내려받기, 포트·권한과 최초 오류를 확인합니다 |
