@@ -33,6 +33,8 @@ const progress = {
   level: int,
   exp: int,
   exp_to_next_level: int,
+  level_exp: int,
+  level_exp_required: int,
 };
 const equipment = obj({
   stage: int,
@@ -116,6 +118,7 @@ const codexItem = {
   name: str,
   region: regionWithStatus,
   state: collectState,
+  is_active: bool,
   pieces: int,
   required_pieces: int,
   image_url: nullable(str),
@@ -139,6 +142,7 @@ interface EndpointDoc {
   errors?: E[];
   body?: Schema;
   query?: string[];
+  boolQuery?: string[];
   isPublic?: boolean;
   idempotent?: boolean;
 }
@@ -227,6 +231,9 @@ export function ApiEndpoint(doc: EndpointDoc) {
     ...(doc.query ?? []).map((name) =>
       ApiQuery({ name, required: false, type: 'integer' }),
     ),
+    ...(doc.boolQuery ?? []).map((name) =>
+      ApiQuery({ name, required: false, type: 'boolean' }),
+    ),
   );
 }
 
@@ -244,6 +251,34 @@ export const DOCS = {
     response: obj({ jwt: str }),
   },
   getUser: { summary: '유저 조회', response: user },
+  sendChat: {
+    summary: '특산물 추천과 시세를 답하는 탐험 도우미',
+    body: obj({ message: { ...str, minLength: 1, maxLength: 200 } }),
+    response: obj({
+      reply: str,
+      source: oneOf('AI', 'TEMPLATE'),
+      recommendation: nullable(
+        obj({
+          specialty_id: int,
+          name: str,
+          region: str,
+          product: nullable(obj({ title: str })),
+        }),
+      ),
+      prices: arr(
+        obj({
+          kind: oneOf('RETAIL', 'NATIONAL', 'AUCTION'),
+          area: str,
+          label: str,
+          unit: str,
+          price: int,
+          year_ago_price: nullable(int),
+          survey_date: str,
+        }),
+      ),
+    }),
+    errors: [E.VALIDATION_ERROR],
+  },
   previewIdleReward: {
     summary: '획득 가능한 방치 보상 조회. 조각 개수는 공개하지 않습니다',
     response: obj({
@@ -322,7 +357,10 @@ export const DOCS = {
     ],
   },
   listRegions: {
-    summary: '활성 지역 목록과 해금 상태',
+    summary:
+      '지역 목록과 해금 상태. 비활성 지역은 include_inactive=true 일 때만 포함합니다',
+    boolQuery: ['include_inactive'],
+    errors: [E.VALIDATION_ERROR],
     response: obj({
       regions: arr(
         obj({
@@ -330,6 +368,7 @@ export const DOCS = {
           code: str,
           name: str,
           sort_order: int,
+          is_active: bool,
           gold_per_minute: int,
           exp_per_minute: int,
           piece_drop_bp: int,
@@ -406,8 +445,10 @@ export const DOCS = {
     ],
   },
   listCodex: {
-    summary: '도감 목록과 수집 상태',
+    summary:
+      '도감 목록과 수집 상태. 비활성 지역은 include_inactive=true 일 때만 포함합니다',
     query: ['region_id'],
+    boolQuery: ['include_inactive'],
     response: obj({
       summary: obj({ total: int, discovered: int, completed: int }),
       items: arr(obj(codexItem)),

@@ -2,6 +2,8 @@ import {
   cumulativeExp,
   expToNext,
   expToNextLevel,
+  levelExp,
+  levelExpRequired,
   levelFor,
   levelGoldBonusPercent,
 } from './level';
@@ -39,6 +41,29 @@ describe('레벨 공식 — GAME_RULES 5절 표', () => {
     expect(levelFor(100000)).toBe(20);
     expect(expToNextLevel(100000)).toBe(0);
   });
+
+  it.each([
+    [0, 0, 100],
+    [99, 99, 100],
+    [100, 0, 200],
+    [300, 0, 350],
+    [520, 220, 350],
+    [649, 349, 350],
+    [650, 0, 550],
+    [67449, 9549, 9550],
+  ])('누적 %iXP의 레벨 진행값은 %i/%i이다', (exp, current, required) => {
+    expect(levelExp(exp)).toBe(current);
+    expect(levelExpRequired(exp)).toBe(required);
+    expect(required - current).toBe(expToNextLevel(exp));
+  });
+
+  it.each([67450, 100000])(
+    '레벨 20은 누적 %iXP여도 진행값이 0/0이다',
+    (exp) => {
+      expect(levelExp(exp)).toBe(0);
+      expect(levelExpRequired(exp)).toBe(0);
+    },
+  );
 
   it.each([
     [1, 0],

@@ -9,6 +9,7 @@ import { RegionProduct } from './region-product.entity';
 import { RegionQuiz } from './region-quiz.entity';
 import { Region } from './region.entity';
 import { ShopProduct } from './shop-product.entity';
+import { SpecialtyPrice } from './specialty-price.entity';
 import { TodayRegionQuiz } from './today-region-quiz.entity';
 import { UserRegionUnlock } from './user-region-unlock.entity';
 import { User } from './users.entity';
@@ -25,12 +26,14 @@ export {
   RegionProduct,
   RegionQuiz,
   ShopProduct,
+  SpecialtyPrice,
   TodayRegionQuiz,
   User,
   UserRegionUnlock,
 };
 
 export const ENTITIES = [
+  SpecialtyPrice,
   Equipment,
   EquipmentStat,
   EquipmentStatSet,

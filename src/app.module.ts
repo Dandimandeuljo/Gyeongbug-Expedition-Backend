@@ -10,6 +10,7 @@ import { buildDataSourceOptions } from './config/typeorm.config';
 import { HealthController } from './health.controller';
 import { AppThrottlerGuard, JwtAuthGuard } from './modules/auth/auth.guards';
 import { AuthModule } from './modules/auth/auth.module';
+import { ChatModule } from './modules/chat/chat.module';
 import { CodexModule } from './modules/codex/codex.module';
 import { EquipmentModule } from './modules/equipment/equipment.module';
 import { IdleRewardModule } from './modules/idle-reward/idle-reward.module';
@@ -74,6 +75,17 @@ import { UserModule } from './modules/user/user.module';
           .required(),
         SWAGGER_ENABLED: Joi.boolean().required(),
         TRUST_PROXY_HOPS: Joi.number().integer().min(0).default(0),
+        DATA_GO_KR_SERVICE_KEY: Joi.string().empty('').optional(),
+        AI_API_KEY: Joi.string().empty('').optional(),
+        AI_MODEL: Joi.string()
+          .pattern(/^[A-Za-z0-9._-]+$/)
+          .empty('')
+          .optional(),
+        CLOVA_API_KEY: Joi.string().empty('').optional(),
+        CLOVA_MODEL: Joi.string()
+          .pattern(/^[A-Za-z0-9._-]+$/)
+          .empty('')
+          .optional(),
         STATIC_ROOT: Joi.string().required(),
         PUBLIC_BASE_URL: Joi.string()
           .uri({ scheme: ['http', 'https'] })
@@ -131,6 +143,7 @@ import { UserModule } from './modules/user/user.module';
     CodexModule,
     ProductModule,
     ProgressModule,
+    ChatModule,
   ],
   controllers: [HealthController],
   providers: [
