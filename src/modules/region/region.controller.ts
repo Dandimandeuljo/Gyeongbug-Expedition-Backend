@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Query } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager } from 'typeorm';
 import { CurrentUser, Idempotent, OperationCtx } from '../../common/decorators';
@@ -10,8 +10,12 @@ import {
   progressView,
   regionCode,
   regionRef,
-  regionStatus,
+  visibleRegionStatus,
 } from '../../common/views';
+import {
+  IncludeInactiveQueryDto,
+  includesInactive,
+} from '../../common/validation/include-inactive-query.dto';
 import {
   Logbook,
   Region,
@@ -33,14 +37,19 @@ export class RegionController {
 
   @ApiEndpoint(DOCS.listRegions)
   @Get()
-  async list(@CurrentUser() auth: AuthUser) {
+  async list(
+    @CurrentUser() auth: AuthUser,
+    @Query() query: IncludeInactiveQueryDto,
+  ) {
     const manager = this.dataSource.manager;
     const user = await manager.findOneByOrFail(User, { id: auth.id });
     // 직전 지역은 비활성 지역까지 포함한 진행 순서에서 찾습니다.
     const allRegions = await manager.find(Region, {
       order: { sortOrder: 'ASC' },
     });
-    const regions = allRegions.filter((region) => region.isActive);
+    const regions = includesInactive(query)
+      ? allRegions
+      : allRegions.filter((region) => region.isActive);
     const products = await manager.find(RegionProduct);
     const logbooks = await manager.findBy(Logbook, { userId: auth.id });
     const unlocks = await manager.findBy(UserRegionUnlock, { userId: auth.id });
@@ -59,6 +68,7 @@ export class RegionController {
           code: regionCode(region),
           name: region.name,
           sort_order: region.sortOrder,
+          is_active: region.isActive,
           gold_per_minute: region.goldPerMinute,
           exp_per_minute: region.expPerMinute,
           piece_drop_bp: region.pieceDropBp,
@@ -69,7 +79,7 @@ export class RegionController {
             pieces: piecesOf.get(region.id) ?? 0,
             required_pieces: product.requiredPieces,
           },
-          status: regionStatus(region.id, user.curRegionId, unlockedIds),
+          status: visibleRegionStatus(region, user.curRegionId, unlockedIds),
           unlocked_at: unlockOf.get(region.id) ?? null,
           unlock:
             previous && previousProduct

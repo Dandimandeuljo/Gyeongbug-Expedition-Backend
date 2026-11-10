@@ -19,6 +19,7 @@ const TABLES = [
   'region_product',
   'region_quiz',
   'shop_product',
+  'specialty_price',
   'today_region_quiz',
   'user_region_unlock',
   'users',
@@ -84,7 +85,7 @@ describe('스키마', () => {
   });
 
   describe('마이그레이션', () => {
-    it('14개 테이블을 만든다', async () => {
+    it('15개 테이블을 만든다', async () => {
       expect(await tableNames()).toEqual(TABLES);
     });
 
@@ -94,7 +95,8 @@ describe('스키마', () => {
     });
 
     it('MobDrop 은 기존 이월 초와 연속 실패를 4초 몹 기준으로 옮긴다', async () => {
-      await ds.undoLastMigration();
+      await ds.undoLastMigration(); // SpecialtyPrice
+      await ds.undoLastMigration(); // MobDrop
       const userId = await createUser();
       await ds.query(
         `INSERT INTO logbook (user_id, region_id, region_product_id, carry_seconds, consecutive_fails)
@@ -118,6 +120,7 @@ describe('스키마', () => {
     });
 
     it('revert 후 테이블이 사라지고 다시 적용된다', async () => {
+      await ds.undoLastMigration();
       await ds.undoLastMigration();
       await ds.undoLastMigration();
       expect(await tableNames()).toEqual([]);

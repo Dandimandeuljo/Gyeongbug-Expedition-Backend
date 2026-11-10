@@ -11,9 +11,10 @@ import {
   collectState,
   imageUrl,
   regionRef,
-  regionStatus,
   SILHOUETTE_IMG_PATH,
+  visibleRegionStatus,
 } from '../../common/views';
+import { includesInactive } from '../../common/validation/include-inactive-query.dto';
 import {
   Logbook,
   Region,
@@ -35,13 +36,16 @@ export class CodexController {
   @Get()
   async list(@CurrentUser() auth: AuthUser, @Query() query: CodexQueryDto) {
     const context = await this.loadContext(auth.id);
+    const listed = includesInactive(query)
+      ? context.allRegions
+      : context.regions;
     if (
       query.region_id !== undefined &&
-      !context.regions.some((region) => region.id === query.region_id)
+      !listed.some((region) => region.id === query.region_id)
     ) {
       throw new GameError(ErrorCode.REGION_NOT_FOUND);
     }
-    const regions = context.regions.filter(
+    const regions = listed.filter(
       (region) =>
         query.region_id === undefined || region.id === query.region_id,
     );
@@ -112,13 +116,14 @@ export class CodexController {
       name: product.name,
       region: {
         ...regionRef(region),
-        status: regionStatus(
-          region.id,
+        status: visibleRegionStatus(
+          region,
           context.user.curRegionId,
           context.unlockedIds,
         ),
       },
       state,
+      is_active: region.isActive,
       pieces,
       required_pieces: product.requiredPieces,
       image_url: imageUrl(

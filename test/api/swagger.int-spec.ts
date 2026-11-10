@@ -50,11 +50,11 @@ describe('Swagger', () => {
     await stopApp(t);
   });
 
-  it('API 18개와 멱등성 헤더 5개를 문서화한다', () => {
+  it('API 19개와 멱등성 헤더 5개를 문서화한다', () => {
     const operations = Object.entries(paths)
       .filter(([path]) => path.startsWith(API))
       .flatMap(([, methods]: [string, any]) => Object.values(methods));
-    expect(operations).toHaveLength(18);
+    expect(operations).toHaveLength(19);
     for (const operation of operations as any[]) {
       expect(operation.summary).toBeTruthy();
       const success = operation.responses['200'] ?? operation.responses['201'];
@@ -99,6 +99,15 @@ describe('Swagger', () => {
     }
 
     expectMatches('get', '/user', await get('/user').expect(200));
+    expectMatches(
+      'post',
+      '/chat',
+      await http()
+        .post(`${API}/chat`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ message: '달콤한 과일 추천해 줘' })
+        .expect(200),
+    );
     expectMatches('get', '/idle-reward', await get('/idle-reward').expect(200));
     expectMatches('get', '/equipment', await get('/equipment').expect(200));
     expectMatches('get', '/regions', await get('/regions').expect(200));

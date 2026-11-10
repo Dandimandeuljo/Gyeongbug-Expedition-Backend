@@ -47,6 +47,110 @@ describe('게임 API', () => {
     t.rng.length = 0;
   });
 
+  describe('챗봇', () => {
+    const chat = (jwt: string, message: unknown) =>
+      http()
+        .post(`${API}/chat`)
+        .set('Authorization', `Bearer ${jwt}`)
+        .send({ message });
+
+    it('키가 없으면 정형 답변으로 추천하고 게임 상태를 바꾸지 않는다', async () => {
+      const { jwt } = await newUser();
+      const before = await get('/user', jwt).expect(200);
+      const res = await chat(
+        jwt,
+        '달콤한 과일을 좋아해! 2만 원 이하로 추천해 줘.',
+      ).expect(200);
+      expect(res.body).toMatchObject({
+        source: 'TEMPLATE',
+        recommendation: {
+          specialty_id: 1,
+          name: '사과',
+          region: '청송',
+          product: { title: '햇살 과수원 사과' },
+        },
+      });
+      expect(res.body.reply).toContain('청송 사과를 추천해 드릴게요.');
+      const after = await get('/user', jwt).expect(200);
+      expect(after.body.state_version).toBe(before.body.state_version);
+      expect(after.body.gold).toBe(before.body.gold);
+    });
+
+    it('저장된 시세로 답하고 없는 특산물은 없다고 답한다', async () => {
+      const { jwt } = await newUser();
+      await t.ds.query(
+        `INSERT INTO specialty_price
+           (region_product_id, kind, area, label, unit, price, survey_date)
+         VALUES (2, 'RETAIL', '안동', '국산(염장)', '1손', 7180, '2026-11-06')`,
+      );
+      try {
+        const known = await chat(jwt, '고등어 얼마야?').expect(200);
+        expect(known.body.prices).toEqual([
+          {
+            kind: 'RETAIL',
+            area: '안동',
+            label: '국산(염장)',
+            unit: '1손',
+            price: 7180,
+            year_ago_price: null,
+            survey_date: '2026-11-06',
+          },
+        ]);
+        expect(known.body.reply).toContain('7,180원');
+        const unknown = await chat(jwt, '과메기 시세 알려줘').expect(200);
+        expect(unknown.body.prices).toEqual([]);
+        expect(unknown.body.reply).toContain('시세 자료는 아직 없어요');
+      } finally {
+        await t.ds.query(`DELETE FROM specialty_price`);
+      }
+    });
+
+    it('빈 메시지, 긴 메시지, 인증 없는 요청을 거절한다', async () => {
+      const { jwt } = await newUser();
+      await chat(jwt, '   ').expect(400);
+      await chat(jwt, '가'.repeat(201)).expect(400);
+      await chat(jwt, 1).expect(400);
+      await http().post(`${API}/chat`).send({ message: '사과' }).expect(401);
+    });
+  });
+
+  describe('레벨 진행값', () => {
+    it('현재 레벨 안의 경험치를 응답한다', async () => {
+      const { jwt, id } = await newUser();
+      const fresh = await get('/user', jwt).expect(200);
+      expect(fresh.body).toMatchObject({
+        level_exp: 0,
+        level_exp_required: 100,
+      });
+      await setUser(id, 'exp = 520, level = 3');
+      const mid = await get('/user', jwt).expect(200);
+      expect(mid.body).toMatchObject({
+        level: 3,
+        exp: 520,
+        exp_to_next_level: 130,
+        level_exp: 220,
+        level_exp_required: 350,
+      });
+      await setUser(id, 'exp = 70000, level = 20');
+      const max = await get('/user', jwt).expect(200);
+      expect(max.body).toMatchObject({
+        exp_to_next_level: 0,
+        level_exp: 0,
+        level_exp_required: 0,
+      });
+    });
+
+    it('상태를 바꾸는 응답에도 진행값이 들어간다', async () => {
+      const { jwt, id } = await newUser();
+      await setUser(id, 'exp = 520, level = 3');
+      await elapse(id, 600);
+      const claim = await post('/idle-reward', jwt).expect(200);
+      expect(claim.body.exp).toBe(530);
+      expect(claim.body.level_exp).toBe(230);
+      expect(claim.body.level_exp_required).toBe(350);
+    });
+  });
+
   describe('공통', () => {
     it('없는 경로와 인증 실패를 정해진 코드로 돌려준다', async () => {
       const { jwt } = await newUser();
@@ -470,6 +574,53 @@ describe('게임 API', () => {
   });
 
   describe('지역', () => {
+    it('include_inactive=true 면 잠긴 지역까지 8개를 주고 기본 응답은 유지한다', async () => {
+      const { jwt, id } = await newUser();
+      const basic = await get('/regions', jwt).expect(200);
+      expect(basic.body.regions).toHaveLength(2);
+      expect(basic.body.regions[0].is_active).toBe(true);
+      const off = await get('/regions?include_inactive=false', jwt).expect(200);
+      expect(off.body.regions).toHaveLength(2);
+
+      const all = await get('/regions?include_inactive=true', jwt).expect(200);
+      expect(all.body.regions).toHaveLength(8);
+      expect(all.body.regions[2]).toMatchObject({
+        code: 'R03',
+        name: '영주',
+        is_active: false,
+        status: 'LOCKED',
+        unlocked_at: null,
+        specialty: { name: '풍기인삼', pieces: 0, required_pieces: 20 },
+        unlock: {
+          specialty_name: '간고등어',
+          required_pieces: 20,
+          current_pieces: 0,
+        },
+      });
+
+      await post('/regions/move', jwt)
+        .send({ target_region_id: 3 })
+        .expect(404);
+      await t.ds.query(
+        `INSERT INTO user_region_unlock (user_id, region_id) VALUES ($1, 3)`,
+        [id],
+      );
+      const recorded = await get('/regions?include_inactive=true', jwt);
+      expect(recorded.body.regions[2].status).toBe('LOCKED');
+      expect(recorded.body.regions[2].unlocked_at).not.toBeNull();
+    });
+
+    it('include_inactive 는 true 또는 false 만 받는다', async () => {
+      const { jwt } = await newUser();
+      for (const path of ['/regions', '/codex']) {
+        const res = await get(`${path}?include_inactive=yes`, jwt).expect(400);
+        expect(res.body).toMatchObject({
+          code: 'VALIDATION_ERROR',
+          details: { field: 'include_inactive' },
+        });
+      }
+    });
+
     it('9절 5행: 조각 20개면 해금을 기록하되 이동하지 않고 조각을 유지한다', async () => {
       const { jwt, id } = await newUser();
       const before = await get('/regions', jwt).expect(200);
@@ -673,6 +824,33 @@ describe('게임 API', () => {
   });
 
   describe('도감과 상품', () => {
+    it('include_inactive=true 면 도감에 8개 특산물을 주고 상세는 계속 막는다', async () => {
+      const { jwt } = await newUser();
+      const all = await get('/codex?include_inactive=true', jwt).expect(200);
+      expect(all.body.summary).toEqual({
+        total: 8,
+        discovered: 0,
+        completed: 0,
+      });
+      expect(all.body.items[2]).toMatchObject({
+        name: '풍기인삼',
+        state: 'UNDISCOVERED',
+        is_active: false,
+        pieces: 0,
+        required_pieces: 20,
+        image_url: 'http://localhost:3000/static/silhouette.png',
+        region: { code: 'R03', status: 'LOCKED' },
+      });
+      const r03 = await get('/codex?region_id=3&include_inactive=true', jwt);
+      expect(r03.status).toBe(200);
+      expect(r03.body.items).toHaveLength(1);
+      const basic = await get('/codex', jwt).expect(200);
+      expect(basic.body.items).toHaveLength(2);
+      expect(basic.body.items[0].is_active).toBe(true);
+      await get('/codex?region_id=3', jwt).expect(404);
+      await get('/codex/3', jwt).expect(404);
+    });
+
     it('미발견은 소개를 숨기고 조각이 있으면 보여 준다', async () => {
       const { jwt, id } = await newUser();
       await t.ds.query(
