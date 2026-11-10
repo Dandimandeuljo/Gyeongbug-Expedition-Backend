@@ -196,7 +196,7 @@ AI 에는 서버가 넘겨준 게임 규칙·특산물·시세 자료만 전달�
 ## 🏗 Architecture
 
 ```mermaid
-flowchart LR
+flowchart TD
     Client["프런트엔드<br/>(React)"] --> Guard["속도 제한 · JWT 인증"]
     Guard --> Idem["중복 요청 방지<br/>(Idempotency-Key)"]
     Idem --> Controller["기능별 Controller"]
